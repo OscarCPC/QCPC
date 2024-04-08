@@ -35,7 +35,7 @@ c.execute('''CREATE TABLE IF NOT EXISTS developers (
 conn.commit()
 
 # Descargar el JSON de desarrolladores desde la URL
-url = "https://api.thegamesdb.net/v1/Developers?apikey=8b398662ea67cda0114a51d5b343cc52d085ce00565eec054b8c3c167e818724"
+url = "https://api.thegamesdb.net/v1/Developers?apikey=apikey"
 response = requests.get(url)
 
 if response.status_code == 200:
