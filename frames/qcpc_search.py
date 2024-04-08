@@ -1,7 +1,6 @@
 from PyQt5.QtCore import *  # type: ignore
 from PyQt5.QtGui import *  # type: ignore
 from PyQt5.QtWidgets import *  # type: ignore
-from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 import json
 import os
 import requests
@@ -12,7 +11,13 @@ from .common import *
 
 class qcpc_search(QWidget):
     path = os.getcwd()
-    path_to_image = os.path.join(path,'frames', 'images')
+    path_to_image = os.path.join(path,'files', 'images')
+    path_to_download = os.path.join(path,'files', 'downloads')
+    path_to_db = os.path.join(path,'db','qcpc.db')
+    boxart_path = os.path.join(path_to_download, 'boxart')    
+    screenshot_path = os.path.join(path_to_download, 'screenshot')
+    
+    
 
     def setupUi(self):
 
@@ -153,6 +158,7 @@ class qcpc_search(QWidget):
         
 
         self.retranslateUi(self)
+        self.test_path()
         self.setup_connections()
 
         QMetaObject.connectSlotsByName(self)
@@ -171,6 +177,7 @@ class qcpc_search(QWidget):
         self.qcpc_input_search.clicked.connect(self.get_game)        
         self.qcpc_result_table.itemClicked.connect(self.show_game_image)
         self.qcpc_input_frame_delete.clicked.connect(lambda: self.qcpc_input_text.clear())
+        self.qcpc_input_frame_save.clicked.connect(self.guardar_seleccion)
         
     def eventFilter(self, source, event):
         if source is self.qcpc_input_text and event.type() == QEvent.KeyPress:
@@ -184,6 +191,14 @@ class qcpc_search(QWidget):
 
         return False
 
+    def test_path(self):
+        if not os.path.exists(self.path_to_download):
+            os.makedirs(self.path_to_download)
+        if not os.path.exists(self.boxart_path):
+            os.makedirs(self.boxart_path)
+        if not os.path.exists(self.screenshot_path):
+            os.makedirs(self.screenshot_path)
+            
     def get_api_key(self):
         path = os.getcwd()        
         path_to_json = os.path.join(path,'frames','config','config.json')
@@ -215,26 +230,52 @@ class qcpc_search(QWidget):
                 platform = game["platform"]
                 region_id = game["region_id"]
                 country_id = game["country_id"]
-                developers = game["developers"]
+                developer_id = developer_id = game["developers"][0] if game["developers"] else None  # Tomar el primer valor de la lista de desarrolladores si existe
+                
+                developer_name = self.get_developer_name(developer_id)
 
                 # Crear un diccionario con los datos del juego
                 game_data = {
-                    "game_id": game_id,
-                    "game_title": game_title,
-                    "release_date": release_date,
-                    "platform": platform,
-                    "region_id": region_id,
-                    "country_id": country_id,
-                    "developers": developers
+                "game_id": game_id,
+                "game_title": game_title,
+                "release_date": release_date,
+                "platform": platform,
+                "region_id": region_id,
+                "country_id": country_id,
+                "developer_id": developer_id,
+                "developers": developer_name
                 }
                 
-                item = QListWidgetItem(f"{game_title} - {release_date}")
+                
+                
+                item = QListWidgetItem(f"{game_title} - {release_date} -  Desarrollador: {developer_name}")
                 item.setData(Qt.UserRole, game_data)
                 self.qcpc_result_table.addItem(item)
 
 
         else:
             show_results(self.qcpc_input_output_text,"Error en la petición REST:", request.status_code)
+            
+    def get_developer_name(self, developer_id):
+        # Conectar a la base de datos
+        if developer_id is None:
+            return "Desconocido"
+        print(developer_id)
+        conn = sqlite3.connect(self.path_to_db)
+        c = conn.cursor()
+
+        # Buscar el nombre del desarrollador por su ID en la tabla de desarrolladores
+        c.execute('SELECT name FROM developers WHERE id = ?', (developer_id,))
+        developer_name = c.fetchone()
+
+        # Cerrar la conexión
+        conn.close()
+
+        # Si se encontró el nombre del desarrollador, devolverlo, de lo contrario, devolver "Desconocido"
+        if developer_name:
+            return developer_name[0]
+        else:
+            return "Desconocido"
             
     def show_game_image(self, item):
     # Obtener el game_id del item
@@ -245,11 +286,11 @@ class qcpc_search(QWidget):
 
     def get_game_image(self, game_id):
         # Determine image paths
-        boxart_path = os.path.join(self.path, 'files', 'images', 'boxart')
-        boxart_path_front = os.path.join(self.path, 'files', 'images', 'boxart', f"{game_id}_front_boxart.jpg")
-        boxart_path_back = os.path.join(self.path, 'files', 'images', 'boxart', f"{game_id}_back_boxart.jpg")
-        screenshot_path_check = os.path.join(self.path, 'files', 'images', 'screenshot', f"{game_id}")
-        screenshot_path = os.path.join(self.path, 'files', 'images', 'screenshot')
+        boxart_path = os.path.join(self.path, 'files', 'downloads', 'boxart')
+        boxart_path_front = os.path.join(self.path, 'files', 'downloads', 'boxart', f"{game_id}_front_boxart.jpg")
+        boxart_path_back = os.path.join(self.path, 'files', 'downloads', 'boxart', f"{game_id}_back_boxart.jpg")
+        screenshot_path_check = os.path.join(self.path, 'files', 'downloads', 'screenshot', f"{game_id}")
+        screenshot_path = os.path.join(self.path, 'files', 'downloads', 'screenshot')
 
         # Check if boxart already exists
         if os.path.exists(boxart_path_front) and os.path.exists(boxart_path_back):
@@ -298,32 +339,6 @@ class qcpc_search(QWidget):
         else:
             show_results(self.qcpc_input_output_text, f"Error en la petición REST: {request.status_code}")
 
-    def guardar_seleccion(self):
-        game_id = 28373  # Aquí debes obtener el game_id de alguna manera
-        game_title = "Renegade III: The Final Chapter"
-        release_date = "1989-01-01"
-        platform = 4914
-        region_id = 0
-        country_id = 0
-        developers = None
-        image_path = "ruta_de_la_imagen.jpg"  # Aquí debes proporcionar la ruta correcta de la imagen
-
-        # Conectar a la base de datos
-        conn = sqlite3.connect('juegos.db')
-        c = conn.cursor()
-
-        # Insertar los datos en la tabla
-        data = (game_id, game_title, release_date, platform, region_id, country_id, developers, image_path)
-        c.execute("INSERT INTO juegos (game_id, game_title, release_date, platform, region_id, country_id, developers, image_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", data)
-
-        # Guardar los cambios y cerrar la conexión
-        conn.commit()
-        conn.close()
-
-        # Mensaje de éxito
-        QMessageBox.information(self, "Guardado", "La selección se ha guardado correctamente en la base de datos.")
-
-
     def download_image(self, image_url, image_path, game_id, image_type, filename):
         # Determine file extension from the filename
         #file_extension = filename.split(".")[-1]
@@ -347,3 +362,43 @@ class qcpc_search(QWidget):
         scaled_pixmap = original_pixmap.scaled(scaled_width, scaled_height)
         self.qcpc_image_label.setPixmap(scaled_pixmap)
         self.qcpc_image_label.setAlignment(Qt.AlignCenter)
+        
+    
+    def guardar_seleccion(self):
+        # Obtener el elemento seleccionado en la tabla de resultados
+        selected_item = self.qcpc_result_table.currentItem()
+
+        # Verificar si hay un juego seleccionado
+        if selected_item is None:
+            show_results(self.qcpc_input_output_text, "No hay ningún juego seleccionado.")
+            return
+
+        # Obtener los datos del juego seleccionado
+        game_data = selected_item.data(Qt.UserRole)
+        print(game_data)
+
+        # Obtener el ID del desarrollador del juego
+        developer_id = game_data.get("developer_id")
+        print(developer_id)
+
+        # Verificar si el juego tiene un desarrollador asociado
+        if developer_id is None:
+        # Asignar el ID 10861 al desarrollador si no tiene uno asociado
+            developer_id = 10861
+        # Conectar a la base de datos
+        conn = sqlite3.connect(self.path_to_db)
+        c = conn.cursor()
+
+        # Insertar los datos en la tabla de juegos
+        c.execute('''INSERT INTO juegos 
+                     (game_title, release_date, platform, region_id, country_id, developer_id, image_path) 
+                     VALUES (?, ?, ?, ?, ?, ?, ?)''',
+                  (game_data["game_title"], game_data["release_date"], game_data["platform"],
+                   game_data["region_id"], game_data["country_id"], developer_id, ""))
+
+        # Guardar los cambios y cerrar la conexión
+        conn.commit()
+        conn.close()
+
+        # Mostrar mensaje de éxito
+        show_results(self.qcpc_input_output_text, "Selección guardada correctamente en la base de datos.")
