@@ -1,15 +1,1 @@
-API Keys
-Public API Key: 8b398662ea67cda0114a51d5b343cc52d085ce00565eec054b8c3c167e818724
 
-This key has a limit per IP.
-
-This key should be used in your application.
-Private API Key: ce4f53460a1aeee8fc864488541f6c8d4e321974fced7bfcc2346652a49ddd31
-
-Remaining Requests: 6000/6000
-
-This key would contain a higher one time request rate limit, but the key must not be made available to the general public, as it has a shared limit and not an IP based one.
-
-This key can be used to create an initial mirror of the required data on your server, which you can then subsquantly updated using the Update endpoint using the public key.
-
-Please Note: this key should only be used server side. 
