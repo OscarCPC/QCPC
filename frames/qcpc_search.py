@@ -11,11 +11,22 @@ from .common import *
 
 class qcpc_search(QWidget):
     path = os.getcwd()
-    path_to_image = os.path.join(path,'files', 'images')
-    path_to_download = os.path.join(path,'files', 'downloads')
+    
+    
+    #BDD
     path_to_db = os.path.join(path,'db','qcpc.db')
-    boxart_path = os.path.join(path_to_download, 'boxart')    
+    
+    #Descargas    
+    path_to_download = os.path.join(path,'files', 'downloads')    
+    boxart_path = os.path.join(path_to_download, 'boxart')        
     screenshot_path = os.path.join(path_to_download, 'screenshot')
+        
+    #Guardar descargas
+    path_to_image = os.path.join(path,'files', 'images')
+    boxart_path_images = os.path.join(path_to_image, 'boxart')    
+    screenshot_path_images = os.path.join(path_to_image, 'screenshot')    
+    
+
     
     
 
@@ -152,11 +163,6 @@ class qcpc_search(QWidget):
         
             
         #self.horizontalLayout.addWidget(self.qcpc_image_label)
-
-
-        
-        
-
         self.retranslateUi(self)
         self.test_path()
         self.setup_connections()
@@ -192,12 +198,12 @@ class qcpc_search(QWidget):
         return False
 
     def test_path(self):
-        if not os.path.exists(self.path_to_download):
-            os.makedirs(self.path_to_download)
-        if not os.path.exists(self.boxart_path):
-            os.makedirs(self.boxart_path)
-        if not os.path.exists(self.screenshot_path):
-            os.makedirs(self.screenshot_path)
+        paths = [self.path_to_download, self.boxart_path, self.screenshot_path, self.path_to_image, self.boxart_path_images, self.screenshot_path_images]
+        for path in paths:
+            if not os.path.exists(path):
+                os.makedirs(path)
+        
+
             
     def get_api_key(self):
         path = os.getcwd()        
@@ -249,7 +255,7 @@ class qcpc_search(QWidget):
                 
                 
                 item = QListWidgetItem(f"{game_title} - {release_date} -  Desarrollador: {developer_name}")
-                item.setData(Qt.UserRole, game_data)
+                item.setData(Qt.UserRole, game_data)                
                 self.qcpc_result_table.addItem(item)
 
 
@@ -259,8 +265,7 @@ class qcpc_search(QWidget):
     def get_developer_name(self, developer_id):
         # Conectar a la base de datos
         if developer_id is None:
-            return "Desconocido"
-        print(developer_id)
+            return "Desconocido"        
         conn = sqlite3.connect(self.path_to_db)
         c = conn.cursor()
 
@@ -375,27 +380,67 @@ class qcpc_search(QWidget):
 
         # Obtener los datos del juego seleccionado
         game_data = selected_item.data(Qt.UserRole)
-        print(game_data)
-
+        
         # Obtener el ID del desarrollador del juego
         developer_id = game_data.get("developer_id")
-        print(developer_id)
-
+        
         # Verificar si el juego tiene un desarrollador asociado
         if developer_id is None:
-        # Asignar el ID 10861 al desarrollador si no tiene uno asociado
+            # Asignar el ID 10861 al desarrollador si no tiene uno asociado
             developer_id = 10861
+        game_id = game_data['game_id']
+        # Definir las rutas de las imágenes
+        front_boxart_path = None
+        back_boxart_path = None
+        screenshot_path = None
+        
+        if os.path.exists(os.path.join(self.path, 'files', 'downloads', 'boxart', f"{game_id}_front_boxart.jpg")):
+            front_boxart_path = os.path.join(self.path, 'files', 'downloads', 'boxart', f"{game_id}_front_boxart.jpg")
+        if os.path.exists(os.path.join(self.path, 'files', 'downloads', 'boxart', f"{game_id}_back_boxart.jpg")):
+            back_boxart_path = os.path.join(self.path, 'files', 'downloads', 'boxart', f"{game_id}_back_boxart.jpg")
+        if os.path.exists(os.path.join(self.path, 'files', 'downloads', 'screenshot', f"{game_id}_screenshot.jpg")):
+            screenshot_path = os.path.join(self.path, 'files', 'downloads', 'screenshot', f"{game_id}_screenshot.jpg")
+
         # Conectar a la base de datos
         conn = sqlite3.connect(self.path_to_db)
         c = conn.cursor()
+        
+        # Verificar si el game_id ya existe en la tabla juegos
+        c.execute('''SELECT id FROM juegos WHERE id = ?''', (game_id,))
+        existing_game = c.fetchone()
+
+        # Si ya existe un registro con el mismo game_id, mostrar un mensaje y salir de la función
+        if existing_game:
+            show_results(self.qcpc_input_output_text, f"El juego con ID {game_id} ya está en la base de datos.")
+            conn.close()
+            return
+
 
         # Insertar los datos en la tabla de juegos
+        
+        if front_boxart_path:
+            new_front_boxart_path = os.path.join(self.path, 'files', 'images', 'boxart', f"{game_id}_front_boxart.jpg")
+            shutil.move(front_boxart_path, new_front_boxart_path)
+        else:
+            new_front_boxart_path = 'null'
+        if back_boxart_path:
+            new_back_boxart_path = os.path.join(self.path, 'files', 'images', 'boxart', f"{game_id}_back_boxart.jpg")
+            shutil.move(back_boxart_path, new_back_boxart_path)
+        else:
+            new_back_boxart_path = 'null'
+        if screenshot_path:
+            new_screenshot_path = os.path.join(self.path, 'files', 'images', 'screenshot', f"{game_id}")
+            shutil.move(screenshot_path, new_screenshot_path)
+        else:
+            new_screenshot_path = 'null'
+            
         c.execute('''INSERT INTO juegos 
-                     (game_title, release_date, platform, region_id, country_id, developer_id, image_path) 
-                     VALUES (?, ?, ?, ?, ?, ?, ?)''',
-                  (game_data["game_title"], game_data["release_date"], game_data["platform"],
-                   game_data["region_id"], game_data["country_id"], developer_id, ""))
-
+            (id, game_title, release_date, platform, region_id, country_id, developer_id, front_boxart_path, back_boxart_path, screenshot_path) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+            (game_id, game_data["game_title"], game_data["release_date"], game_data["platform"],
+            game_data["region_id"], game_data["country_id"], developer_id, new_front_boxart_path, new_back_boxart_path, new_screenshot_path))
+        
+        
         # Guardar los cambios y cerrar la conexión
         conn.commit()
         conn.close()

@@ -6,27 +6,39 @@ import requests
 path = os.getcwd()
 path_to_db = os.path.join(path, 'db', 'qcpc.db')
 
-# Conectar a la base de datos (creará el archivo si no existe)
+# Eliminar la base de datos si existe
+if os.path.exists(path_to_db):
+    os.remove(path_to_db)
+
+# Conectar a la base de datos (creará el archivo nuevamente)
 conn = sqlite3.connect(path_to_db)
 
 # Crear un cursor
 c = conn.cursor()
 
-# Crear la tabla de juegos si no existe
-c.execute('''CREATE TABLE IF NOT EXISTS juegos (
+# Eliminar la tabla de juegos si existe
+c.execute('''DROP TABLE IF EXISTS juegos''')
+
+# Eliminar la tabla de desarrolladores si existe
+c.execute('''DROP TABLE IF EXISTS developers''')
+
+# Crear la tabla de juegos
+c.execute('''CREATE TABLE juegos (
              id INTEGER PRIMARY KEY,
              game_title TEXT,
              release_date DATE,
              platform INTEGER,
              region_id INTEGER,
              country_id INTEGER,
-             developer_id INTEGER,
-             image_path TEXT,
+             developer_id INTEGER,             
+             front_boxart_path TEXT,
+             back_boxart_path TEXT,
+             screenshot_path TEXT,
              FOREIGN KEY(developer_id) REFERENCES developers(id)
              )''')
 
-# Crear la tabla de desarrolladores si no existe
-c.execute('''CREATE TABLE IF NOT EXISTS developers (
+# Crear la tabla de desarrolladores
+c.execute('''CREATE TABLE developers (
              id INTEGER PRIMARY KEY,
              name TEXT
              )''')
