@@ -2,9 +2,9 @@ from PyQt5.QtCore import *  # Agregamos Qt aquí
 from PyQt5 import QtCore
 from PyQt5 import QtWidgets, QtGui
 from PyQt5.QtCore import *
-
 import qtawesome as qta
 from .qcpc_search import *
+from .qcpc_list import *
 
 
 
@@ -17,8 +17,8 @@ class Ui_MainWindow(object):
         
         self.qcpc_search = qcpc_search()
         self.qcpc_search.setupUi()         
-        #self.copyfiles = CopyFiles()
-        #self.copyfiles.setupUi()
+        self.qcpc_list = qcpc_list()
+        self.qcpc_list.setupUi()
         #self.restpetition = RestPetition()
         #self.restpetition.setupUi()
         #self.roland_browser = RolandBrowser()
@@ -204,6 +204,7 @@ class Ui_MainWindow(object):
         self.stackedWidget.setLineWidth(0)
         self.stackedWidget.setObjectName("stackedWidget")
         self.stackedWidget.addWidget(self.qcpc_search)
+        self.stackedWidget.addWidget(self.qcpc_list)
         
         #self.bt_uno.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.text_editor))
         
@@ -213,7 +214,7 @@ class Ui_MainWindow(object):
         self.page = QtWidgets.QWidget()
         self.page.setObjectName("cover")
         self.page_one_layout = QtWidgets.QGridLayout(self.page)
-        self.page_one_layout.setObjectName("page_uno_layout")
+        self.page_one_layout.setObjectName("page_one_layout")
         self.label_page = QtWidgets.QLabel(self.page)        
         self.label_page.setScaledContents(False)
         self.label_page.setAlignment(QtCore.Qt.AlignCenter)
@@ -228,9 +229,14 @@ class Ui_MainWindow(object):
         
         
         #pagina 1
-        self.page_uno = QtWidgets.QWidget()        
-        self.page_uno.setObjectName("qcpc_search")
-        self.stackedWidget.addWidget(self.page_uno)
+        self.page_one = QtWidgets.QWidget()        
+        self.page_one.setObjectName("qcpc_search")
+        self.stackedWidget.addWidget(self.page_one)
+        
+        #pagina 2
+        self.page_two = QtWidgets.QWidget()        
+        self.page_two.setObjectName("qcpc_list")
+        self.stackedWidget.addWidget(self.page_two)
         
         
         #Creación del stacked widget
@@ -249,7 +255,7 @@ class Ui_MainWindow(object):
         self.bt_menu.setText(_translate("MainWindow", "    MENU "))
         self.bt_inicio.setText(_translate("MainWindow", "       Inicio"))
         self.bt_uno.setText(_translate("MainWindow", "   Buscar"))
-        #self.bt_dos.setText(_translate("MainWindow", "    Copy Files"))
+        self.bt_dos.setText(_translate("MainWindow", "    Listado"))
         #self.bt_tres.setText(_translate("MainWindow", "    Peticiones"))
         #self.bt_cuatro.setText(_translate("MainWindow", "     Links"))
         #self.bt_cinco.setText(_translate("MainWindow", "  CONECTIVIDAD"))

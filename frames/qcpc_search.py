@@ -225,39 +225,42 @@ class qcpc_search(QWidget):
 
         request = requests.get(url_base, params=params)
 
+        
         if request.status_code == 200:
             data = request.json()            
             self.qcpc_result_table.clear()  # Clear existing items
-            
-            for game in data["data"]["games"]:
-                game_id = game["id"]
-                game_title = game["game_title"]
-                release_date = game["release_date"][:4]  # Extraer solo el año
-                platform = game["platform"]
-                region_id = game["region_id"]
-                country_id = game["country_id"]
-                developer_id = developer_id = game["developers"][0] if game["developers"] else None  # Tomar el primer valor de la lista de desarrolladores si existe
-                
-                developer_name = self.get_developer_name(developer_id)
+            if "data" in data and "games" in data["data"] and data["data"]["games"]:
+                for game in data["data"]["games"]:
+                    game_id = game["id"]
+                    game_title = game["game_title"]
+                    release_date = game["release_date"][:4]  # Extraer solo el año
+                    platform = game["platform"]
+                    region_id = game["region_id"]
+                    country_id = game["country_id"]
+                    developer_id = developer_id = game["developers"][0] if game["developers"] else None  # Tomar el primer valor de la lista de desarrolladores si existe
 
-                # Crear un diccionario con los datos del juego
-                game_data = {
-                "game_id": game_id,
-                "game_title": game_title,
-                "release_date": release_date,
-                "platform": platform,
-                "region_id": region_id,
-                "country_id": country_id,
-                "developer_id": developer_id,
-                "developers": developer_name
-                }
-                
-                
-                
-                item = QListWidgetItem(f"{game_title} - {release_date} -  Desarrollador: {developer_name}")
-                item.setData(Qt.UserRole, game_data)                
-                self.qcpc_result_table.addItem(item)
+                    developer_name = self.get_developer_name(developer_id)
 
+                    # Crear un diccionario con los datos del juego
+                    game_data = {
+                    "game_id": game_id,
+                    "game_title": game_title,
+                    "release_date": release_date,
+                    "platform": platform,
+                    "region_id": region_id,
+                    "country_id": country_id,
+                    "developer_id": developer_id,
+                    "developers": developer_name
+                    }
+
+
+
+                    item = QListWidgetItem(f"{game_title} - {release_date} -  Desarrollador: {developer_name}")
+                    item.setData(Qt.UserRole, game_data)                
+                    self.qcpc_result_table.addItem(item)
+            else:
+            # Show message if no results were found
+                self.qcpc_result_table.addItem("No se han encontrado resultados")
 
         else:
             show_results(self.qcpc_input_output_text,"Error en la petición REST:", request.status_code)
