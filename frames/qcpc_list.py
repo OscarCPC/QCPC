@@ -1,9 +1,11 @@
 from PyQt5.QtCore import *  # type: ignore
 from PyQt5.QtGui import *  # type: ignore
 from PyQt5.QtWidgets import *  # type: ignore
+from openpyxl import Workbook
 import json
 import os
 import sqlite3
+import pandas as pd
 from .common import *
 
 
@@ -50,6 +52,11 @@ class qcpc_list(QWidget):
         self.qcpc_attribute_list = QListWidget(self.qcpc_attribute_list_frame)
         self.qcpc_attribute_list.setObjectName("qcpc_attribute_list")
         self.verticalLayout_attributes.addWidget(self.qcpc_attribute_list)
+        
+        self.qcpc_attribute_list.setSelectionMode(QListWidget.SingleSelection)
+
+ 
+
 
         # Añadir el frame de la lista de atributos al layout principal
         self.gridLayout_2.addWidget(self.qcpc_attribute_list_frame, 0, 0, 2, 1)  # 2 filas de altura
@@ -81,6 +88,42 @@ class qcpc_list(QWidget):
         self.qcpc_text_label.setObjectName("qcpc_text_label")
         self.qcpc_text_label.setReadOnly(True)
         self.qcpc_text_layout.addWidget(self.qcpc_text_label)
+        
+         #Frame de los botones (Nuevo Widget)
+        self.qcpc_button_frame = QFrame(self.qcpc_frame_container)
+        self.qcpc_button_frame.setObjectName("qcpc_button_frame")
+        self.qcpc_button_frame.setFrameShape(QFrame.StyledPanel)
+        self.qcpc_button_frame.setFrameShadow(QFrame.Raised)
+        self.qcpc_button_layout = QHBoxLayout(self.qcpc_button_frame)
+        self.qcpc_button_layout.setObjectName("qcpc_button_layout")
+
+        # Crear y añadir los botones al layout de los botones
+        self.qcpc_button_1 = QPushButton(self.qcpc_button_frame)
+        self.qcpc_button_1.setObjectName("qcpc_button_1")
+        self.qcpc_button_1.setText("Actualizar Listado")
+        self.qcpc_button_layout.addWidget(self.qcpc_button_1)
+
+        self.qcpc_button_2 = QPushButton(self.qcpc_button_frame)
+        self.qcpc_button_2.setObjectName("qcpc_button_2")
+        self.qcpc_button_2.setText("Excel")
+        self.qcpc_button_layout.addWidget(self.qcpc_button_2)
+
+        self.qcpc_button_3 = QPushButton(self.qcpc_button_frame)
+        self.qcpc_button_3.setObjectName("qcpc_button_3")
+        self.qcpc_button_3.setText("Botón 3")
+        self.qcpc_button_layout.addWidget(self.qcpc_button_3)
+
+        self.qcpc_button_4 = QPushButton(self.qcpc_button_frame)
+        self.qcpc_button_4.setObjectName("qcpc_button_4")
+        self.qcpc_button_4.setText("Botón 4")
+        self.qcpc_button_layout.addWidget(self.qcpc_button_4)
+
+        # Añadir el frame de los botones al layout principal
+        self.gridLayout_2.addWidget(self.qcpc_button_frame, 2, 0, 1, 2)  # Nueva fila que ocupa ambas columnas
+
+        # Añadir el contenedor principal al layout del formulario
+        self.formLayout_2.setWidget(0, QFormLayout.SpanningRole, self.qcpc_frame_container)
+
 
         # Añadir el frame del texto al layout principal
         self.gridLayout_2.addWidget(self.qcpc_text_frame, 1, 1, 1, 1)
@@ -102,15 +145,58 @@ class qcpc_list(QWidget):
         self.qcpc_text_label.setPlaceholderText(QCoreApplication.translate("qcpc_search", "Resultados", None))
 
     def setup_connections(self):
-        pass  # Aquí puedes definir las conexiones necesarias
-    
+    # Añadir conexiones de los botones aquí
+        self.qcpc_button_1.clicked.connect(self.refresh_list)
+        self.qcpc_button_2.clicked.connect(self.create_excel)
+        self.qcpc_button_3.clicked.connect(self.on_button_3_clicked)
+        self.qcpc_button_4.clicked.connect(self.on_button_4_clicked)
+        
+    # Conectar la señal itemClicked a la función handle_item_click
+        self.qcpc_attribute_list.itemClicked.connect(self.get_game_info)    
+        self.qcpc_attribute_list.currentItemChanged.connect(self.handle_current_item_change)
+        
+
+    def handle_current_item_change(self, current, previous):
+        if current:
+            self.get_game_info(current)
+ 
+    # Métodos de los botones
+
+    def create_excel(self):
+        excel_path = os.path.join(self.path, 'excel.xlsx')
+        try:
+            conn = sqlite3.connect(self.path_to_db)            
+            
+            df = pd.read_sql_query(''' SELECT j.game_title,j.release_date,d.name FROM  juegos j INNER JOIN developers d 
+                                ON j.developer_id = d.id
+                                ORDER BY j.game_title ASC
+                                ''',conn)
+            df.to_excel(excel_path, sheet_name='Juegos', index=False)
+        
+        except sqlite3.Error as e:
+            print(f"Database error: {e}")
+        except Exception as e:
+            print(f"General error: {e}")
+        finally:
+            conn.close()
+        
+
+    def on_button_3_clicked(self):
+        print("Botón 3 clicado")    
+
+    def on_button_4_clicked(self):
+        print("Botón 4 clicado")
+
     def show_all_games(self):
         try:
             conn = sqlite3.connect(self.path_to_db)
             conn.row_factory = sqlite3.Row  # Habilitar el acceso a las columnas por nombre
             c = conn.cursor()
 
-            result = c.execute('SELECT * FROM juegos')
+            result = c.execute('''SELECT * FROM  juegos j INNER JOIN developers d 
+                                ON j.developer_id = d.id
+                                ORDER BY j.game_title ASC
+                                ''')
             rows = result.fetchall()
 
             # Convertir a JSON
@@ -121,9 +207,9 @@ class qcpc_list(QWidget):
             data = json.loads(json_result)
             
             for item_data in data:
-                item = QListWidgetItem(f"{item_data['game_title']}")
-                item.setData(Qt.UserRole, item_data)
-                self.qcpc_attribute_list.addItem(item)
+                title = QListWidgetItem(f"{item_data['game_title']}")
+                title.setData(Qt.UserRole, item_data)
+                self.qcpc_attribute_list.addItem(title)
                 
         except sqlite3.Error as e:
             print(f"Database error: {e}")
@@ -131,4 +217,54 @@ class qcpc_list(QWidget):
             print(f"General error: {e}")
         finally:
             conn.close()
+    
+    def refresh_list(self):
+        self.qcpc_attribute_list.clear()
+        self.show_all_games()
         
+    def get_game_info(self, item):
+        # Obtener los datos del elemento clicado
+        item_data = item.data(Qt.UserRole)
+        
+        # Obtener las rutas de las imágenes
+        image_paths = [
+            item_data.get('front_boxart_path', ''),
+            item_data.get('back_boxart_path', ''),
+            item_data.get('screenshot_path', '')
+        ]
+        
+        # Filtrar rutas vacías
+        self.image_paths = [path for path in image_paths if path and path != 'null']
+        
+
+        if self.image_paths:
+            # Iniciar el slideshow
+            self.start_slideshow()
+        else:
+            print("No image paths found for this item")
+            
+        # Mostrar la información del juego en el widget de texto
+        game_info = f"Title: {item_data.get('game_title')}\n"
+        game_info += f"Release Date: {item_data.get('release_date')}\n"
+        game_info += f"Developer: {item_data.get('name')}\n"
+        
+        self.qcpc_text_label.setPlainText(game_info)
+
+            
+    def start_slideshow(self):
+        self.current_image_index = 0
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.show_next_image)
+        self.timer.start(5000)  # Cambiar de imagen cada 5 segundos
+        self.show_next_image()
+    
+    def show_next_image(self):
+        if self.image_paths:
+            image_path = self.image_paths[self.current_image_index]
+            pixmap = QPixmap(image_path)
+            self.qcpc_image_label.setPixmap(pixmap)
+
+            # Actualizar el índice para la siguiente imagen
+            self.current_image_index = (self.current_image_index + 1) % len(self.image_paths)
+
+
