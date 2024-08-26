@@ -84,8 +84,10 @@ class qcpc_list(QWidget):
         self.qcpc_text_frame.setFrameShadow(QFrame.Raised)
         self.qcpc_text_layout = QVBoxLayout(self.qcpc_text_frame)
         self.qcpc_text_layout.setObjectName("qcpc_text_layout")
-        self.qcpc_text_label = QTextEdit(self.qcpc_text_frame)
+        #self.qcpc_text_label = QTextEdit(self.qcpc_text_frame)
+        self.qcpc_text_label = QTextBrowser(self.qcpc_text_frame)
         self.qcpc_text_label.setObjectName("qcpc_text_label")
+        #self.qcpc_text_label.setOpenExternalLinks(True)
         self.qcpc_text_label.setReadOnly(True)
         self.qcpc_text_layout.addWidget(self.qcpc_text_label)
         
@@ -150,6 +152,7 @@ class qcpc_list(QWidget):
         self.qcpc_button_2.clicked.connect(self.create_excel)
         self.qcpc_button_3.clicked.connect(self.on_button_3_clicked)
         self.qcpc_button_4.clicked.connect(self.on_button_4_clicked)
+        self.qcpc_text_label.anchorClicked.connect(self.open_link)  # Conectar la señal una vez
         
     # Conectar la señal itemClicked a la función handle_item_click
         self.qcpc_attribute_list.itemClicked.connect(self.get_game_info)    
@@ -167,7 +170,7 @@ class qcpc_list(QWidget):
         try:
             conn = sqlite3.connect(self.path_to_db)            
             
-            df = pd.read_sql_query(''' SELECT j.game_title,j.release_date,d.name FROM  juegos j INNER JOIN developers d 
+            df = pd.read_sql_query(''' SELECT j.game_title,j.release_date,d.name,j.url FROM  juegos j INNER JOIN developers d 
                                 ON j.developer_id = d.id
                                 ORDER BY j.game_title ASC
                                 ''',conn)
@@ -244,13 +247,26 @@ class qcpc_list(QWidget):
             print("No image paths found for this item")
             
         # Mostrar la información del juego en el widget de texto
-        game_info = f"Title: {item_data.get('game_title')}\n"
-        game_info += f"Release Date: {item_data.get('release_date')}\n"
-        game_info += f"Developer: {item_data.get('name')}\n"
+        #game_info = f"Title: {item_data.get('game_title')}\n"
+        #game_info += f"Release Date: {item_data.get('release_date')}\n"
+        #game_info += f"Developer: {item_data.get('name')}\n"
+        game_info = f"""
+        <b>Title:</b> {item_data.get('game_title')}<br>
+        <b>Release Date:</b> {item_data.get('release_date')}<br>
+        <b>Developer:</b> {item_data.get('name')}<br>
+        """
         
-        self.qcpc_text_label.setPlainText(game_info)
+        web_url = item_data.get('url')
+        if web_url:                                
+            game_info += f'<b>Web:</b> <a href="{web_url}">{web_url}</a>'            
+        
+        
+        self.qcpc_text_label.setHtml(game_info)
 
-            
+    def open_link(self, url: QUrl):        
+        QDesktopServices.openUrl(url) 
+        
+               
     def start_slideshow(self):
         self.current_image_index = 0
         self.timer = QTimer(self)

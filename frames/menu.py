@@ -5,6 +5,7 @@ from PyQt5.QtCore import *
 import qtawesome as qta
 from .qcpc_search import *
 from .qcpc_list import *
+from .qcpc_form import *
 
 
 
@@ -19,8 +20,8 @@ class Ui_MainWindow(object):
         self.qcpc_search.setupUi()         
         self.qcpc_list = qcpc_list()
         self.qcpc_list.setupUi()
-        #self.restpetition = RestPetition()
-        #self.restpetition.setupUi()
+        self.qcpc_form = qcpc_form()
+        self.qcpc_form.setupUi()
         #self.roland_browser = RolandBrowser()
         #self.roland_browser.setupUi()
         
@@ -205,6 +206,7 @@ class Ui_MainWindow(object):
         self.stackedWidget.setObjectName("stackedWidget")
         self.stackedWidget.addWidget(self.qcpc_search)
         self.stackedWidget.addWidget(self.qcpc_list)
+        self.stackedWidget.addWidget(self.qcpc_form)
         
         #self.bt_uno.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.text_editor))
         
@@ -238,6 +240,11 @@ class Ui_MainWindow(object):
         self.page_two.setObjectName("qcpc_list")
         self.stackedWidget.addWidget(self.page_two)
         
+        #pagina 3
+        self.page_three = QtWidgets.QWidget()        
+        self.page_three.setObjectName("qcpc_form")
+        self.stackedWidget.addWidget(self.page_three)
+        
         
         #Creación del stacked widget
         self.verticalLayout_3.addWidget(self.stackedWidget)
@@ -256,7 +263,7 @@ class Ui_MainWindow(object):
         self.bt_inicio.setText(_translate("MainWindow", "       Inicio"))
         self.bt_uno.setText(_translate("MainWindow", "   Buscar"))
         self.bt_dos.setText(_translate("MainWindow", "    Listado"))
-        #self.bt_tres.setText(_translate("MainWindow", "    Peticiones"))
+        self.bt_tres.setText(_translate("MainWindow", "    Formulario"))
         #self.bt_cuatro.setText(_translate("MainWindow", "     Links"))
         #self.bt_cinco.setText(_translate("MainWindow", "  CONECTIVIDAD"))
         #self.label_2.setText(_translate("MainWindow", "Run\"\n Press PLAY and then any key:"))

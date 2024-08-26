@@ -34,6 +34,7 @@ c.execute('''CREATE TABLE juegos (
              front_boxart_path TEXT,
              back_boxart_path TEXT,
              screenshot_path TEXT,
+             url VARCHAR(255),
              FOREIGN KEY(developer_id) REFERENCES developers(id)
              )''')
 
