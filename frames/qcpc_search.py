@@ -79,16 +79,27 @@ class qcpc_search(QWidget):
         self.qcpc_input_output_text.setReadOnly(True)
         
 
+
+        # Agregar el formulario editable al layout
+        
+        
+
         self.qcpc_input_layout.setWidget(5, QFormLayout.FieldRole, self.qcpc_input_output_text)
 
         self.qcpc_inner_input_layout = QHBoxLayout()
         self.qcpc_inner_input_layout.setObjectName(u"qcpc_inner_input_layout")
         self.qcpc_input_frame_save = QPushButton(self.qcpc_input_frame)
         self.qcpc_input_frame_save.setObjectName(u"qcpc_input_frame_save")
-        self.qcpc_input_frame_save.setMinimumSize(QSize(275, 0))
+        self.qcpc_input_frame_save.setMinimumSize(QSize(80, 30))
         self.qcpc_input_frame_save.setLayoutDirection(Qt.RightToLeft)
+        
+        self.qcpc_input_frame_edit = QPushButton(self.qcpc_input_frame)
+        self.qcpc_input_frame_edit.setObjectName(u"qcpc_info_frame_edit")
+        self.qcpc_input_frame_edit.setMinimumSize(QSize(80, 30))
+        self.qcpc_input_frame_edit.setLayoutDirection(Qt.RightToLeft)
 
         self.qcpc_inner_input_layout.addWidget(self.qcpc_input_frame_save)
+        self.qcpc_inner_input_layout.addWidget(self.qcpc_input_frame_edit)
 
         self.qcpc_input_frame_delete = QPushButton(self.qcpc_input_frame)
         self.qcpc_input_frame_delete.setObjectName(u"qcpc_input_frame_delete")
@@ -107,10 +118,7 @@ class qcpc_search(QWidget):
 
         self.qcpc_inner_input_layout.addWidget(self.qcpc_input_search)
 
-
         self.qcpc_input_layout.setLayout(4, QFormLayout.SpanningRole, self.qcpc_inner_input_layout)
-
-
 
         self.qcpc_result_frame = QFrame(self.qcpc_frame_container)
         self.qcpc_result_frame.setObjectName(u"qcpc_result_frame")
@@ -131,9 +139,7 @@ class qcpc_search(QWidget):
 
         self.verticalLayout.addWidget(self.qcpc_result_label)
 
-
         self.gridLayout_2.addWidget(self.qcpc_result_frame, 1, 0, 1, 1)
-
 
         self.formLayout_2.setWidget(0, QFormLayout.LabelRole, self.qcpc_frame_container)
 
@@ -156,19 +162,128 @@ class qcpc_search(QWidget):
                 
         #self.qcpc_image_frame.setStyleSheet(u"background-color: rgba(170, 0, 0,0);")
         
-        #self.gridLayout_2.addWidget(self.qcpc_input_frame, 0, 0, 1, 1)
-        self.gridLayout_2.addWidget(self.qcpc_input_frame, 0, 0, 1, 1)  # Colocar en la primera columna y primera fila
-        self.gridLayout_2.addWidget(self.qcpc_image_frame, 0, 1, 2, 1)  # Colocar en la segunda columna y primera fila, ocupando 2 filas de altura
-        self.gridLayout_2.addWidget(self.qcpc_result_frame, 1, 0, 1, 1)  # Colocar en la primera columna y segunda fila
+
         
             
         #self.horizontalLayout.addWidget(self.qcpc_image_label)
+        self.set_grid_layout()
         self.retranslateUi(self)
         self.test_path()
         self.setup_connections()
 
         QMetaObject.connectSlotsByName(self)
     # setupUi   
+    
+    def set_grid_layout(self):
+        #self.gridLayout_2.addWidget(self.qcpc_input_frame, 0, 0, 1, 1)
+        self.gridLayout_2.addWidget(self.qcpc_input_frame, 0, 0, 1, 1)  # Colocar en la primera columna y primera fila
+        self.gridLayout_2.addWidget(self.qcpc_image_frame, 0, 1, 2, 1)  # Colocar en la segunda columna y primera fila, ocupando 2 filas de altura
+        self.gridLayout_2.addWidget(self.qcpc_result_frame, 1, 0, 1, 1)  # Colocar en la primera columna y segunda fila
+
+    def create_editable_form(self):
+        # Aquí es donde se definirá el formulario editable
+        self.qcpc_form_editable_frame = QFrame(self.qcpc_frame_container)
+        self.qcpc_form_editable_frame.setObjectName(u"qcpc_form_editable_frame")
+        self.qcpc_form_editable_frame.setFrameShape(QFrame.StyledPanel)
+        self.qcpc_form_editable_frame.setFrameShadow(QFrame.Raised)
+        self.qcpc_form_editable_layout = QFormLayout(self.qcpc_form_editable_frame)
+        self.qcpc_form_editable_layout.setObjectName(u"qcpc_form_editable_layout")
+        self.gridLayout_2.addWidget(self.qcpc_form_editable_frame, 1, 1, 1, 1)  # Segunda columna, segunda fila
+        self.gridLayout_2.addWidget(self.qcpc_image_frame, 0, 1, 1, 1)  # Segunda columna, primera fila, ocupa una fila        
+        
+        selected_item = self.qcpc_result_table.currentItem()
+        
+        if selected_item is None:
+            show_results(self.qcpc_input_output_text, "No hay ningún juego seleccionado.")
+            return
+        
+        game_data = selected_item.data(Qt.UserRole)
+        game_id = str(game_data["game_id"])
+        # Añadir campos al formulario
+        self.qcpc_form_editable_layout.addRow("ID del Juego:", QLabel(str(game_data["game_id"])))
+        self.game_title_input = QLineEdit(str(game_data["game_title"]))
+        self.qcpc_form_editable_layout.addRow("Título:", self.game_title_input)
+        self.release_date_input = QLineEdit(str(game_data["release_date"]))
+        self.qcpc_form_editable_layout.addRow("Fecha de lanzamiento:", self.release_date_input)
+        self.platform_input = QLineEdit(str(game_data["platform"]))
+        self.qcpc_form_editable_layout.addRow("Plataforma:", self.platform_input)
+        self.developer_input = QLineEdit(str(game_data["developers"]))
+        self.qcpc_form_editable_layout.addRow("Desarrollador:", self.developer_input)
+
+        
+        
+        self.qcpc_image_frame.setMinimumSize(QSize(600, 450))
+        self.qcpc_image_frame.setMaximumSize(QSize(16777215, 16777215))
+        self.qcpc_image_label.setMinimumSize(QSize(600, 450))
+        self.qcpc_image_label.setMaximumSize(QSize(16777215, 16777215))
+        
+                
+         #Forzar actualización del layout y el QLabel
+        self.qcpc_image_frame.adjustSize()  # Asegurarse de que el frame redimensione sus hijos
+        self.qcpc_image_label.adjustSize()  # Asegurar que el QLabel ajuste su tamaño
+        self.qcpc_image_label.update()  # Forzar actualización visual del QLabel
+        self.qcpc_image_frame.update() # Forzar actualización visual        
+      
+        QTimer.singleShot(0, lambda: self.update_image(game_id))
+        
+    def update_image(self, game_id):
+        # Obtener el tamaño actualizado del QLabel
+        label_width = self.qcpc_image_label.width()        
+        label_height = self.qcpc_image_label.height()
+        print(label_width, label_height)
+
+        front_boxart_path = os.path.join(self.path, 'files', 'downloads', 'boxart', f"{game_id}_front_boxart.jpg")
+        
+        if os.path.exists(front_boxart_path):
+            self.show_image(front_boxart_path, label_width, label_height)
+        
+        
+    def clear_editable_form(self):
+        # Verificar si el formulario editable ya existe
+        if hasattr(self, 'qcpc_form_editable_frame') and self.qcpc_form_editable_frame:
+            # Remover el widget del layout
+            self.gridLayout_2.removeWidget(self.qcpc_form_editable_frame)
+            
+            # Eliminar todos los widgets dentro del formulario editable
+            for i in reversed(range(self.qcpc_form_editable_layout.count())):
+                widget = self.qcpc_form_editable_layout.itemAt(i).widget()
+                if widget is not None:
+                    widget.deleteLater()
+
+            # Eliminar el marco del formulario editable
+            self.qcpc_form_editable_frame.deleteLater()
+            self.qcpc_form_editable_frame = None
+            
+    def add_action_buttons(self):
+    # Crear botones y añadirlos al QTextEdit
+        self.save_button = QPushButton("Guardar")
+        self.select_button = QPushButton("Seleccionar")
+        self.edit_button = QPushButton("Editar")
+
+        # Añadir botones al QTextEdit
+        cursor = self.qcpc_input_output_text.textCursor()
+        cursor.movePosition(cursor.End)
+
+        self.qcpc_input_output_text.setTextCursor(cursor)
+        self.qcpc_input_output_text.insertPlainText("\n\n")
+        
+        self.qcpc_input_output_text.append("Seleccione una acción:")
+        self.qcpc_input_output_text.append(" ")
+        
+        self.qcpc_input_output_text.setAlignment(Qt.AlignCenter)
+        
+        self.qcpc_input_output_text.setAlignment(Qt.AlignLeft)
+
+        self.qcpc_input_output_text.insertWidget(cursor, self.select_button)
+        self.qcpc_input_output_text.insertWidget(cursor, self.edit_button)
+        self.qcpc_input_output_text.insertWidget(cursor, self.save_button)
+
+        # Conectar los botones a sus respectivas funciones
+        self.select_button.clicked.connect(self.select_data)
+        self.edit_button.clicked.connect(self.edit_data)
+        self.save_button.clicked.connect(self.save_data)
+
+
 
     def retranslateUi(self, qcpc_search):
         qcpc_search.setWindowTitle(QCoreApplication.translate("qcpc_search", u"Form", None))
@@ -176,6 +291,7 @@ class qcpc_search(QWidget):
         self.qcpc_input_label.setText(QCoreApplication.translate("qcpc_search", u"Titulo a buscar", None))
         self.qcpc_input_frame_save.setText(QCoreApplication.translate("qcpc_search", u"Guardar Selecci\u00f3n", None))
         self.qcpc_input_frame_delete.setText(QCoreApplication.translate("qcpc_search", u"Borrar", None))
+        self.qcpc_input_frame_edit.setText(QCoreApplication.translate("qcpc_search", u"Editar", None))
         self.qcpc_input_search.setText(QCoreApplication.translate("qcpc_search", u"Buscar", None))
     # retranslateUi
     
@@ -184,6 +300,7 @@ class qcpc_search(QWidget):
         self.qcpc_result_table.itemClicked.connect(self.show_game_image)
         self.qcpc_input_frame_delete.clicked.connect(lambda: self.qcpc_input_text.clear())
         self.qcpc_input_frame_save.clicked.connect(self.guardar_seleccion)
+        self.qcpc_input_frame_edit.clicked.connect(self.create_editable_form)
         
     def eventFilter(self, source, event):
         if source is self.qcpc_input_text and event.type() == QEvent.KeyPress:
@@ -214,6 +331,8 @@ class qcpc_search(QWidget):
         return key
     
     def get_game(self):
+        self.clear_editable_form()
+        self.set_grid_layout()
         url_base = "https://api.thegamesdb.net/v1/Games/ByGameName"
         api_key = self.get_api_key()
 
@@ -253,8 +372,6 @@ class qcpc_search(QWidget):
                     "developers": developer_name
                     }
 
-
-
                     item = QListWidgetItem(f"{game_title} - {release_date} -  Desarrollador: {developer_name}")
                     item.setData(Qt.UserRole, game_data)                
                     self.qcpc_result_table.addItem(item)
@@ -293,66 +410,74 @@ class qcpc_search(QWidget):
         self.get_game_image(game_id)
 
     def get_game_image(self, game_id):
-        # Determine image paths
-        boxart_path = os.path.join(self.path, 'files', 'downloads', 'boxart')
+        # Definir las rutas de las imágenes
         boxart_path_front = os.path.join(self.path, 'files', 'downloads', 'boxart', f"{game_id}_front_boxart.jpg")
         boxart_path_back = os.path.join(self.path, 'files', 'downloads', 'boxart', f"{game_id}_back_boxart.jpg")
-        screenshot_path_check = os.path.join(self.path, 'files', 'downloads', 'screenshot', f"{game_id}")
-        screenshot_path = os.path.join(self.path, 'files', 'downloads', 'screenshot')
+        screenshot_path = os.path.join(self.path, 'files', 'downloads', 'screenshot', f"{game_id}_screenshot.jpg")
 
-        # Check if boxart already exists
+        # Comprobar si el boxart ya existe y mostrarlo si es el caso
         if os.path.exists(boxart_path_front) and os.path.exists(boxart_path_back):
             self.show_image(boxart_path_front)
-            show_results(self.qcpc_input_output_text, f"Boxart ya existen.")
+            show_results(self.qcpc_input_output_text, f"El boxart ya existe.")
             return
 
-        # Check if boxart and screenshot already exist
-        if os.path.exists(boxart_path_front) and os.path.exists(boxart_path_back) and os.path.exists(screenshot_path_check):
-            show_results(self.qcpc_input_output_text, f"Boxart y pantallazo ya existen.")
+        # Comprobar si el boxart y la captura de pantalla ya existen
+        if os.path.exists(boxart_path_front) and os.path.exists(boxart_path_back) and os.path.exists(screenshot_path):
+            show_results(self.qcpc_input_output_text, f"El boxart y la captura de pantalla ya existen.")
             return
 
-        # Make API request for image
+        # Realizar la solicitud a la API para obtener las imágenes
         url = f"https://api.thegamesdb.net/v1/Games/Images?apikey={self.get_api_key()}&games_id={game_id}"
         request = requests.get(url)
 
-        # Process image data
         if request.status_code == 200:
             data = request.json()
+
+            # Verificar que haya imágenes disponibles
             if data["data"]["count"] > 0:
-                images = data["data"]["images"][str(game_id)]
+                images = data["data"]["images"].get(str(game_id), [])
+                base_url_thumb = data["data"]["base_url"]["thumb"]
 
+                # Procesar las imágenes recibidas
                 for image in images:
-                    image_type = image["type"]
-                    filename = image["filename"]  # Obtener el nombre de archivo original
+                    image_type = image.get("type")
+                    filename = image.get("filename")
 
-                    # Determine image path
+                    if not image_type or not filename:
+                        continue  # Si faltan datos, pasar a la siguiente imagen
+
+                    # Procesar las imágenes de tipo 'boxart'
                     if image_type == "boxart":
                         image_side = image.get("side", "")
-                        if image_side in ["front", "back"]:
-                            image_path = os.path.join(boxart_path, f"{game_id}_{image_side}_boxart.jpg")
-                            image_url = f"{data['data']['base_url']['thumb']}boxart/{image_side}/{filename}"
-                            self.download_image(image_url, image_path, game_id, image_type,filename)
-                    elif image_type == "screenshot":
-                        image_path = os.path.join(screenshot_path, f"{game_id}_screenshot.jpg")
-                        image_url = f"{data['data']['base_url']['thumb']}screenshots/{filename}"
-                        self.download_image(image_url, image_path, game_id, image_type,filename)
-                    else:
-                        continue  # Skip other types of images
+                        if image_side == "front":
+                            image_path = boxart_path_front
+                        elif image_side == "back":
+                            image_path = boxart_path_back
+                        else:
+                            continue  # Si no es ni 'front' ni 'back', continuar con la siguiente imagen
 
-                    # Download image
-                    image_url = f"{data['data']['base_url']['thumb']}{filename}"
-                    self.download_image(image_url, image_path, game_id, image_type, filename)  # Pasar el nombre de archivo
+                        # Descargar la imagen si no existe, de lo contrario, mostrarla
+                        if not os.path.exists(image_path):
+                            image_url = f"{base_url_thumb}{filename}"
+                            self.download_image(image_url, image_path, game_id, image_type, filename)
+                        else:
+                            self.show_image(image_path)
+
+                    # Procesar las capturas de pantalla (aquí se puede agregar más lógica si fuera necesario)
+                    elif image_type == "screenshot":
+                        if not os.path.exists(screenshot_path):
+                            image_url = f"{base_url_thumb}{filename}"
+                            self.download_image(image_url, screenshot_path, game_id, image_type, filename)
+
             else:
-                show_results(self.qcpc_input_output_text, f"No hay imagenes disponibles.")
+                show_results(self.qcpc_input_output_text, "No hay imágenes disponibles.")
         else:
             show_results(self.qcpc_input_output_text, f"Error en la petición REST: {request.status_code}")
 
-    def download_image(self, image_url, image_path, game_id, image_type, filename):
-        # Determine file extension from the filename
-        #file_extension = filename.split(".")[-1]
-        # Construct the full path including the original filename
-        #image_path_with_name = os.path.join(image_path, f"{game_id}_{image_type}.{file_extension}")
 
+
+
+    def download_image(self, image_url, image_path, game_id, image_type, filename):
         response = requests.get(image_url)
         if response.status_code == 200:
             with open(image_path, 'wb') as f:
@@ -362,14 +487,27 @@ class qcpc_search(QWidget):
         else:
             show_results(self.qcpc_input_output_text,f"Fallo al descargar la imagen {image_type} para el ID del juego {game_id}")
 
+    
+        
+    def show_image(self, image_path, label_width=None, label_height=None):
+        # Cargar la imagen en un QPixmap
+        pixmap = QPixmap(image_path)
 
-    def show_image(self, image_path):
-        original_pixmap = QPixmap(image_path)
-        scaled_width = int(original_pixmap.width() * 1.5)
-        scaled_height = int(original_pixmap.height() * 1.5)
-        scaled_pixmap = original_pixmap.scaled(scaled_width, scaled_height)
+        # Obtener el tamaño del QLabel donde se mostrará la imagen si no se proporciona
+        if label_height is None and label_width is None:
+            label_width = self.qcpc_image_label.width()
+            label_height = self.qcpc_image_label.height()
+        
+        # Escalar la imagen al tamaño del QLabel, manteniendo la proporción        
+        scaled_pixmap = pixmap.scaled(label_width, label_height, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+
+        # Mostrar la imagen escalada
         self.qcpc_image_label.setPixmap(scaled_pixmap)
-        self.qcpc_image_label.setAlignment(Qt.AlignCenter)
+        self.qcpc_image_label.setAlignment(Qt.AlignCenter)  # Centrar la imagen en el QLabel
+        
+        # Forzar la actualización del QLabel para asegurar que la imagen se dibuje correctamente
+        self.qcpc_image_label.update()
+
         
     
     def guardar_seleccion(self):

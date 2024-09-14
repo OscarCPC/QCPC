@@ -123,6 +123,8 @@ QTextEdit {
     padding: 5px; /* Ajusta según sea necesario */
 }
 
+
+
 QTextEdit#cf_text_output{
 	margin-bottom: 15px;
 }
@@ -169,6 +171,7 @@ QFrame#qcpc_frame_container {
 	background-position: center;
 	background-attachment: fixed;
 	}
+
 
 QFrame#qcpc_frame_container QLabel {
 		color: yellow;
