@@ -177,6 +177,9 @@ class qcpc_list(QWidget):
             self.handle_current_item_change
         )
 
+        # Conectar la señal itemDoubleClicked a la función edit_current_item
+        self.qcpc_attribute_list.itemDoubleClicked.connect(self.edit_current_item)
+
     def handle_current_item_change(self, current, previous):
         if current:
             self.get_game_info(current)
@@ -315,14 +318,29 @@ class qcpc_list(QWidget):
         # game_info += f"Release Date: {item_data.get('release_date')}\n"
         # game_info += f"Developer: {item_data.get('name')}\n"
         game_info = f"""
+        <style>
+        body {{
+            color: #0F0;
+        }}
+        a {{
+            color: #0FF;
+        }}
+        b {{
+            color: yellow;
+        }}
+        </style>
         <b>Title:</b> {item_data.get('game_title')}<br>
         <b>Release Date:</b> {item_data.get('release_date')}<br>
         <b>Developer:</b> {item_data.get('name')}<br>
         """
 
         web_url = item_data.get("url")
+        comentarios = item_data.get("comentarios")
+
         if web_url:
             game_info += f'<b>Web:</b> <a href="{web_url}">{web_url}</a>'
+        if comentarios:
+            game_info += f"<br><b>Comentarios:</b> {comentarios}"
 
         self.qcpc_text_label.setHtml(game_info)
 

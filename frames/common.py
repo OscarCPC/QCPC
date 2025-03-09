@@ -1,6 +1,15 @@
 import os
 import shutil
 import openpyxl
+import json
+
+
+def load_config():
+    path = os.getcwd()
+    path_to_json = os.path.join(path, "frames", "config", "config.json")
+    with open(path_to_json, "r") as archivo_config:
+        config = json.load(archivo_config)
+    return config
 
 
 def open_file_folder(path_to_files):
