@@ -236,7 +236,6 @@ class qcpc_search(QWidget):
         # Obtener el tamaño actualizado del QLabel
         label_width = self.qcpc_image_label.width()
         label_height = self.qcpc_image_label.height()
-        print(label_width, label_height)
 
         front_boxart_path = os.path.join(
             self.path, "files", "downloads", "boxart", f"{game_id}_front_boxart.jpg"
@@ -694,7 +693,6 @@ class qcpc_search(QWidget):
 
         # Mover las capturas de pantalla a la carpeta de imágenes y obtener las rutas relativas
         for screenshot_path in screenshot_paths:
-            print(screenshot_path)
             new_screenshot_path = os.path.join(
                 self.path,
                 "files",

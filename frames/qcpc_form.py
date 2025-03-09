@@ -38,90 +38,135 @@ class qcpc_form(QWidget):
         self.resize(800, 600)
         self.setMinimumSize(QSize(800, 600))
 
-        # Crear el layout principal
-        self.gridLayout = QGridLayout(self)
-        self.gridLayout.setObjectName("gridLayout")
+        # Layout principal
+        self.mainLayout = QGridLayout(self)
 
-        # Frame de formulario para los datos del juego
-        self.formFrame = QFrame(self)
-        self.formFrame.setObjectName("formFrame")
-        self.formFrame.setFrameShape(QFrame.StyledPanel)
-        self.formFrame.setFrameShadow(QFrame.Raised)
-        self.formLayout = QFormLayout(self.formFrame)
+        # Frame principal
+        self.mainFrame = QFrame(self)
+        self.mainFrame.setFrameShape(QFrame.StyledPanel)
+        self.mainFrame.setFrameShadow(QFrame.Raised)
 
-        # Crear campos del formulario
-        self.game_title_label = QLabel("Título del juego:", self.formFrame)
-        self.game_title_input = QLineEdit(self.formFrame)
+        # Grid layout para el frame principal
+        self.gridLayout = QGridLayout(self.mainFrame)
 
-        self.release_date_label = QLabel("Fecha de lanzamiento:", self.formFrame)
-        self.release_date_input = QDateEdit(self.formFrame)
+        # Crear y añadir los widgets al grid
+        current_row = 0
+
+        # Título del juego
+        self.game_title_label = QLabel("Título del juego:", self.mainFrame)
+        self.game_title_input = QLineEdit(self.mainFrame)
+        self.gridLayout.addWidget(self.game_title_label, current_row, 0)
+        self.gridLayout.addWidget(self.game_title_input, current_row, 1, 1, 2)
+
+        # Fecha de lanzamiento
+        current_row += 1
+        self.release_date_label = QLabel("Fecha de lanzamiento:", self.mainFrame)
+        self.release_date_input = QDateEdit(self.mainFrame)
         self.release_date_input.setDisplayFormat("yyyy")
+        self.gridLayout.addWidget(self.release_date_label, current_row, 0)
+        self.gridLayout.addWidget(self.release_date_input, current_row, 1)
 
-        self.platform_label = QLabel("Plataforma:", self.formFrame)
-        self.platform_input = QLineEdit(self.formFrame)
+        # Plataforma
+        current_row += 1
+        self.platform_label = QLabel("Plataforma:", self.mainFrame)
+        self.platform_input = QLineEdit(self.mainFrame)
+        self.gridLayout.addWidget(self.platform_label, current_row, 0)
+        self.gridLayout.addWidget(self.platform_input, current_row, 1, 1, 2)
 
-        self.region_id_label = QLabel("ID de región:", self.formFrame)
-        self.region_id_input = QLineEdit(self.formFrame)
+        # Región
+        current_row += 1
+        self.region_id_label = QLabel("ID de región:", self.mainFrame)
+        self.region_id_input = QLineEdit(self.mainFrame)
+        self.gridLayout.addWidget(self.region_id_label, current_row, 0)
+        self.gridLayout.addWidget(self.region_id_input, current_row, 1, 1, 2)
 
-        self.country_id_label = QLabel("ID de país:", self.formFrame)
-        self.country_id_input = QLineEdit(self.formFrame)
+        # País
+        current_row += 1
+        self.country_id_label = QLabel("ID de país:", self.mainFrame)
+        self.country_id_input = QLineEdit(self.mainFrame)
+        self.gridLayout.addWidget(self.country_id_label, current_row, 0)
+        self.gridLayout.addWidget(self.country_id_input, current_row, 1, 1, 2)
 
-        self.developer_id_label = QLabel("ID del desarrollador:", self.formFrame)
-        self.developer_id_input = QLineEdit(self.formFrame)
+        # Desarrollador
+        # Desarrollador
+        current_row += 1
+        self.developer_id_label = QLabel("Desarrollador:", self.mainFrame)
+        self.developer_id_input = QComboBox(self.mainFrame)
+        self.developer_id_input.setFixedSize(
+            int(self.width() / 2), 40
+        )  # Tamaño fijo proporcional
+        view = self.developer_id_input.view()
+        view.setMinimumHeight(100)  # Altura mínima del desplegable
+        view.setMaximumHeight(300)  # Altura máxima del desplegable
 
-        self.front_boxart_label = QLabel("Portada (frontal):", self.formFrame)
-        self.front_boxart_input = QLineEdit(self.formFrame)
-        self.front_boxart_button = QPushButton("Seleccionar archivo", self.formFrame)
+        self.gridLayout.addWidget(self.developer_id_label, current_row, 0)
+        self.gridLayout.addWidget(self.developer_id_input, current_row, 1, 1, 2)
+        # Portada frontal
+        current_row += 1
+        self.front_boxart_label = QLabel("Portada (frontal):", self.mainFrame)
+        self.front_boxart_input = QLineEdit(self.mainFrame)
+        self.front_boxart_button = QPushButton("Seleccionar archivo", self.mainFrame)
         self.front_boxart_button.clicked.connect(self.select_front_boxart_file)
+        self.gridLayout.addWidget(self.front_boxart_label, current_row, 0)
+        self.gridLayout.addWidget(self.front_boxart_input, current_row, 1)
+        self.gridLayout.addWidget(self.front_boxart_button, current_row, 2)
 
-        self.back_boxart_label = QLabel("Portada (trasera):", self.formFrame)
-        self.back_boxart_input = QLineEdit(self.formFrame)
-        self.back_boxart_button = QPushButton("Seleccionar archivo", self.formFrame)
+        # Portada trasera
+        current_row += 1
+        self.back_boxart_label = QLabel("Portada (trasera):", self.mainFrame)
+        self.back_boxart_input = QLineEdit(self.mainFrame)
+        self.back_boxart_button = QPushButton("Seleccionar archivo", self.mainFrame)
         self.back_boxart_button.clicked.connect(self.select_back_boxart_file)
+        self.gridLayout.addWidget(self.back_boxart_label, current_row, 0)
+        self.gridLayout.addWidget(self.back_boxart_input, current_row, 1)
+        self.gridLayout.addWidget(self.back_boxart_button, current_row, 2)
 
-        self.screenshot_label = QLabel("Captura de pantalla:", self.formFrame)
-        self.screenshot_input = QLineEdit(self.formFrame)
-        self.screenshot_button = QPushButton("Seleccionar archivo", self.formFrame)
+        # Capturas de pantalla
+        current_row += 1
+        self.screenshot_label = QLabel("Captura de pantalla:", self.mainFrame)
+        self.screenshot_input = QLineEdit(self.mainFrame)
+        self.screenshot_button = QPushButton("Seleccionar archivo", self.mainFrame)
         self.screenshot_button.clicked.connect(self.select_screenshot_file)
+        self.gridLayout.addWidget(self.screenshot_label, current_row, 0)
+        self.gridLayout.addWidget(self.screenshot_input, current_row, 1)
+        self.gridLayout.addWidget(self.screenshot_button, current_row, 2)
 
-        self.url_label = QLabel("URL:", self.formFrame)
-        self.url_input = QLineEdit(self.formFrame)
+        # URL
+        current_row += 1
+        self.url_label = QLabel("URL:", self.mainFrame)
+        self.url_input = QLineEdit(self.mainFrame)
+        self.gridLayout.addWidget(self.url_label, current_row, 0)
+        self.gridLayout.addWidget(self.url_input, current_row, 1, 1, 2)
 
-        self.comments_label = QLabel("Comentarios:", self.formFrame)
-        self.comments_input = QTextEdit(self.formFrame)
-
-        # Añadir los campos al formulario
-        self.formLayout.addRow(self.game_title_label, self.game_title_input)
-        self.formLayout.addRow(self.release_date_label, self.release_date_input)
-        self.formLayout.addRow(self.platform_label, self.platform_input)
-        self.formLayout.addRow(self.region_id_label, self.region_id_input)
-        self.formLayout.addRow(self.country_id_label, self.country_id_input)
-        self.formLayout.addRow(self.developer_id_label, self.developer_id_input)
-        self.formLayout.addRow(self.front_boxart_label, self.front_boxart_input)
-        self.formLayout.addRow(QLabel(""), self.front_boxart_button)
-        self.formLayout.addRow(self.back_boxart_label, self.back_boxart_input)
-        self.formLayout.addRow(QLabel(""), self.back_boxart_button)
-        self.formLayout.addRow(self.screenshot_label, self.screenshot_input)
-        self.formLayout.addRow(QLabel(""), self.screenshot_button)
-        self.formLayout.addRow(self.url_label, self.url_input)
-        self.formLayout.addRow(self.comments_label, self.comments_input)
+        # Comentarios
+        current_row += 1
+        self.comments_label = QLabel("Comentarios:", self.mainFrame)
+        self.comments_input = QTextEdit(self.mainFrame)
+        self.gridLayout.addWidget(self.comments_label, current_row, 0)
+        self.gridLayout.addWidget(self.comments_input, current_row, 1, 1, 2)
 
         # Botones
-        self.save_button = QPushButton("Guardar", self)
-        self.cancel_button = QPushButton("Cancelar", self)
+        current_row += 1
+        self.save_button = QPushButton("Guardar", self.mainFrame)
+        self.cancel_button = QPushButton("Cancelar", self.mainFrame)
+        self.gridLayout.addWidget(self.save_button, current_row, 1)
+        self.gridLayout.addWidget(self.cancel_button, current_row, 2)
 
-        # Añadir botones al layout
-        self.gridLayout.addWidget(self.formFrame, 0, 0, 1, 2)
-        self.gridLayout.addWidget(self.save_button, 1, 0)
-        self.gridLayout.addWidget(self.cancel_button, 1, 1)
+        # Añadir el frame principal al layout principal
+        self.mainLayout.addWidget(self.mainFrame)
 
-        # Configurar el tamaño de los botones
-        self.save_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.cancel_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        # Configurar el espaciado y márgenes
+        self.gridLayout.setSpacing(10)
+        self.gridLayout.setContentsMargins(10, 10, 10, 10)
 
         # Configurar traducciones y conexiones
         self.retranslateUi()
         self.setup_connections()
+        self.populate_developer_combobox()
+
+    def populate_developer_combobox(self):
+        for developer in self.get_developers():
+            self.developer_id_input.addItem(developer[1], developer[0])
 
     def retranslateUi(self):
         self.setWindowTitle("Formulario de Edición/Adición")
@@ -130,6 +175,19 @@ class qcpc_form(QWidget):
         # Aquí debes conectar los botones a las funciones correspondientes
         self.save_button.clicked.connect(self.save_record)
         self.cancel_button.clicked.connect(self.close)  # Cerrar el formulario
+
+    def get_developers(self):
+        try:
+            conn = sqlite3.connect(self.path_to_db)
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM developers")
+            developers = cursor.fetchall()
+            return developers
+        except Exception as e:
+            print("Error al obtener los desarrolladores")
+            print(e)
+        finally:
+            conn.close()
 
     def load_data(self, item_data):
         self.is_editing = True
@@ -144,8 +202,11 @@ class qcpc_form(QWidget):
             self.release_date_input.setDate(QDate(int(release_date), 1, 1))
         else:
             self.release_date_input.setDate(QDate.currentDate())
+        if item_data.get("platform") == 4914:
+            self.platform_input.setText(str("Amstrad CPC"))
+        else:
+            self.platform_input.setText(str(item_data.get("platform", "")))
 
-        self.platform_input.setText(str(item_data.get("platform", "")))
         self.region_id_input.setText(str(item_data.get("region_id", "")))
         self.country_id_input.setText(str(item_data.get("country_id", "")))
         self.developer_id_input.setText(str(item_data.get("developer_id", "")))
@@ -158,7 +219,7 @@ class qcpc_form(QWidget):
     def save_record(self):
         game_title = self.game_title_input.text()
         release_date = self.release_date_input.date().year()
-        platform = self.platform_input.text()
+        platform = 4914
         region_id = self.region_id_input.text()
         country_id = self.country_id_input.text()
         developer_id = self.developer_id_input.text()
@@ -178,7 +239,7 @@ class qcpc_form(QWidget):
                 cursor.execute(
                     """
                     UPDATE juegos
-                    SET game_title = ?, release_date = ?, platform = ?, region_id = ?, country_id = ?, developer_id = ?, front_boxart_path = ?, back_boxart_path = ?, screenshot_path = ?, url = ?, comentarios = ?
+                    SET game_title = ?, release_date = ?, platform = , region_id = ?, country_id = ?, developer_id = ?, front_boxart_path = ?, back_boxart_path = ?, screenshot_path = ?, url = ?, comentarios = ?
                     WHERE id = ?
                 """,
                     (

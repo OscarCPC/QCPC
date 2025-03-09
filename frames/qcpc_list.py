@@ -201,7 +201,7 @@ class qcpc_list(QWidget):
                 conn,
             )
             df.to_excel(excel_path, sheet_name="Juegos", index=False)
-            print(excel_path)
+
             clean_excel(excel_path)
 
         except sqlite3.Error as e:
@@ -263,10 +263,28 @@ class qcpc_list(QWidget):
             c = conn.cursor()
 
             result = c.execute(
-                """SELECT * FROM  juegos j INNER JOIN developers d 
-                                ON j.developer_id = d.id
-                                ORDER BY j.game_title ASC
-                                """
+                """SELECT 
+                    j.id,
+                    j.game_title,
+                    j.release_date,
+                    j.platform,
+                    j.region_id,
+                    j.country_id,
+                    j.developer_id,
+                    j.front_boxart_path,
+                    j.back_boxart_path,
+                    d.name AS developer_name,
+                    GROUP_CONCAT(s.screenshot_path) AS screenshot_paths
+                FROM 
+                    juegos j
+                INNER JOIN 
+                    developers d ON j.developer_id = d.id
+                LEFT JOIN 
+                    screenshots s ON j.id = s.game_id
+                GROUP BY 
+                    j.id
+                ORDER BY 
+                    j.game_title ASC"""
             )
             rows = result.fetchall()
 
@@ -289,10 +307,6 @@ class qcpc_list(QWidget):
         finally:
             conn.close()
 
-    def refresh_list(self):
-        self.qcpc_attribute_list.clear()
-        self.show_all_games()
-
     def get_game_info(self, item):
         # Obtener los datos del elemento clicado
         item_data = item.data(Qt.UserRole)
@@ -301,22 +315,28 @@ class qcpc_list(QWidget):
         image_paths = [
             item_data.get("front_boxart_path", ""),
             item_data.get("back_boxart_path", ""),
-            item_data.get("screenshot_path", ""),
         ]
+
+        # Obtener las rutas de las capturas de pantalla y agregarlas a la lista de rutas de imágenes
+        screenshot_paths = item_data.get("screenshot_paths", "")
+        if screenshot_paths:
+            image_paths.extend(screenshot_paths.split(","))
 
         # Filtrar rutas vacías
         self.image_paths = [path for path in image_paths if path and path != "null"]
 
+        # Imprimir las rutas de las imágenes para depuración
+        for i in self.image_paths:
+            print(i)
+
         if self.image_paths:
-            # Iniciar el slideshow
-            self.start_slideshow()
+            # Iniciar el slideshow solo si no está ya en curso
+            if not hasattr(self, "timer") or not self.timer.isActive():
+                self.start_slideshow()
         else:
             print("No image paths found for this item")
 
         # Mostrar la información del juego en el widget de texto
-        # game_info = f"Title: {item_data.get('game_title')}\n"
-        # game_info += f"Release Date: {item_data.get('release_date')}\n"
-        # game_info += f"Developer: {item_data.get('name')}\n"
         game_info = f"""
         <style>
         body {{
@@ -331,7 +351,7 @@ class qcpc_list(QWidget):
         </style>
         <b>Title:</b> {item_data.get('game_title')}<br>
         <b>Release Date:</b> {item_data.get('release_date')}<br>
-        <b>Developer:</b> {item_data.get('name')}<br>
+        <b>Developer:</b> {item_data.get('developer_name')}<br>
         """
 
         web_url = item_data.get("url")
@@ -344,6 +364,10 @@ class qcpc_list(QWidget):
 
         self.qcpc_text_label.setHtml(game_info)
 
+    def refresh_list(self):
+        self.qcpc_attribute_list.clear()
+        self.show_all_games()
+
     def open_link(self, url: QUrl):
         QDesktopServices.openUrl(url)
 
@@ -351,8 +375,10 @@ class qcpc_list(QWidget):
         self.current_image_index = 0
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.show_next_image)
+        QTimer.singleShot(
+            1000, self.show_next_image
+        )  # Mostrar la primera imagen después de 1 segundo
         self.timer.start(5000)  # Cambiar de imagen cada 5 segundos
-        self.show_next_image()
 
     def show_next_image(self):
         if self.image_paths:

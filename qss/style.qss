@@ -397,3 +397,31 @@ qcpc_form QLineEdit {
   border-radius: 5px;
   color: yellow;
 }
+
+QComboBox {
+  background-color: #00026b;
+  border: 1px solid blue;
+  padding: 5px;
+}
+
+QComboBox::hover {
+  background-color: blue;
+  border: 1px solid blueviolet;
+}
+
+QComboBox::drop-down {
+  subcontrol-origin: padding;
+  subcontrol-position: top right;
+  width: 15px;
+  border-left-width: 1px;
+  border-left-color: #00026b;
+  border-left-style: solid;
+  border-top-right-radius: 3px;
+  border-bottom-right-radius: 3px;
+  background-color: rgba(0, 0, 0, 0); /* Transparencia 100% */
+}
+QComboBox QAbstractItemView {
+  background-color: blue;
+  border: 1px solid blue;
+  selection-background-color: blueviolet;
+}
