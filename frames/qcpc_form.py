@@ -220,26 +220,38 @@ class qcpc_form(QWidget):
         game_title = self.game_title_input.text()
         release_date = self.release_date_input.date().year()
         platform = 4914
-        region_id = self.region_id_input.text()
-        country_id = self.country_id_input.text()
-        developer_id = self.developer_id_input.text()
+        region_id = self.region_id_input.text() or None
+        country_id = self.country_id_input.text() or None
+        developer_id = self.developer_id_input.currentData()
         front_boxart_path = self.front_boxart_input.text()
         back_boxart_path = self.back_boxart_input.text()
-        screenshot_path = self.screenshot_input.text()
+        screenshot_paths = self.screenshot_input.text().split(";")
         url = self.url_input.text()
         comentarios = self.comments_input.toPlainText()
+
+        print(f"game_title: {game_title}")
+        print(f"release_date: {release_date}")
+        print(f"platform: {platform}")
+        print(f"region_id: {region_id}")
+        print(f"country_id: {country_id}")
+        print(f"developer_id: {developer_id}")
+        print(f"front_boxart_path: {front_boxart_path}")
+        print(f"back_boxart_path: {back_boxart_path}")
+        print(f"screenshot_paths: {screenshot_paths}")
+        print(f"url: {url}")
+        print(f"comentarios: {comentarios}")
 
         conn = sqlite3.connect(self.path_to_db)
         cursor = conn.cursor()
         print("Conexión establecida")
-        print(self.is_editing)
+        print(f"is_editing: {self.is_editing}")
         try:
             if self.is_editing:
                 # Actualizar registro existente
                 cursor.execute(
                     """
                     UPDATE juegos
-                    SET game_title = ?, release_date = ?, platform = , region_id = ?, country_id = ?, developer_id = ?, front_boxart_path = ?, back_boxart_path = ?, screenshot_path = ?, url = ?, comentarios = ?
+                    SET game_title = ?, release_date = ?, platform = ?, region_id = ?, country_id = ?, developer_id = ?, front_boxart_path = ?, back_boxart_path = ?, url = ?, comentarios = ?
                     WHERE id = ?
                 """,
                     (
@@ -251,18 +263,29 @@ class qcpc_form(QWidget):
                         developer_id,
                         front_boxart_path,
                         back_boxart_path,
-                        screenshot_path,
                         url,
                         comentarios,
                         self.record_id,
                     ),
                 )
+                print("Registro actualizado")
+
+                # Actualizar capturas de pantalla existentes
+                cursor.execute(
+                    "DELETE FROM screenshots WHERE game_id = ?", (self.record_id,)
+                )
+                for path in screenshot_paths:
+                    cursor.execute(
+                        "INSERT INTO screenshots (game_id, screenshot_path) VALUES (?, ?)",
+                        (self.record_id, path),
+                    )
+                print("Capturas de pantalla actualizadas")
             else:
                 # Insertar nuevo registro
                 cursor.execute(
                     """
-                    INSERT INTO juegos (game_title, release_date, platform, region_id, country_id, developer_id, front_boxart_path, back_boxart_path, screenshot_path, url, comentarios)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO juegos (game_title, release_date, platform, region_id, country_id, developer_id, front_boxart_path, back_boxart_path, url, comentarios)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                     (
                         game_title,
@@ -273,19 +296,31 @@ class qcpc_form(QWidget):
                         developer_id,
                         front_boxart_path,
                         back_boxart_path,
-                        screenshot_path,
                         url,
                         comentarios,
                     ),
                 )
+                self.record_id = cursor.lastrowid
+                print("Nuevo registro insertado")
+
+                # Insertar nuevas capturas de pantalla
+                for path in screenshot_paths:
+                    cursor.execute(
+                        "INSERT INTO screenshots (game_id, screenshot_path) VALUES (?, ?)",
+                        (self.record_id, path),
+                    )
+                print("Nuevas capturas de pantalla insertadas")
+
         except Exception as e:
             print("Error al guardar el registro")
             print(e)
         finally:
             conn.commit()
             conn.close()
+            print("Conexión cerrada")
 
         self.close()
+        print("Formulario cerrado")
 
     def select_front_boxart_file(self):
         options = QFileDialog.Options()

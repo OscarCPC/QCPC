@@ -35,18 +35,37 @@ class qcpc_list(QWidget):
         self.formLayout_2 = QFormLayout(self)
         self.formLayout_2.setObjectName("formLayout_2")
 
-        # Contenedor principal
+        self.setup_main_container()
+        self.setup_attribute_list_frame()
+        self.setup_image_frame()
+        self.setup_text_frame()
+        self.setup_button_frame()
+
+        # Añadir el contenedor principal al layout del formulario
+        self.formLayout_2.setWidget(
+            0, QFormLayout.SpanningRole, self.qcpc_frame_container
+        )
+
+        # Traducciones y conexiones
+        self.retranslateUi()
+        self.setup_connections()
+        QMetaObject.connectSlotsByName(self)
+
+        self.show_all_games()
+
+    def setup_main_container(self):
+        """Setup main container frame and layout"""
         self.qcpc_frame_container = QFrame(self)
         self.qcpc_frame_container.setObjectName("qcpc_frame_container")
         self.qcpc_frame_container.setFrameShape(QFrame.StyledPanel)
         self.qcpc_frame_container.setFrameShadow(QFrame.Raised)
 
-        # Layout principal
         self.gridLayout_2 = QGridLayout(self.qcpc_frame_container)
         self.gridLayout_2.setObjectName("gridLayout_2")
 
-        # Frame de la lista de atributos (Widget 1)
-        self.qcpc_attribute_list_frame = QListWidget(self.qcpc_frame_container)
+    def setup_attribute_list_frame(self):
+        """Setup attribute list frame and layout"""
+        self.qcpc_attribute_list_frame = QFrame(self.qcpc_frame_container)
         self.qcpc_attribute_list_frame.setObjectName("qcpc_attribute_list_frame")
         self.qcpc_attribute_list_frame.setFrameShape(QFrame.StyledPanel)
         self.qcpc_attribute_list_frame.setFrameShadow(QFrame.Raised)
@@ -63,7 +82,8 @@ class qcpc_list(QWidget):
             self.qcpc_attribute_list_frame, 0, 0, 2, 1
         )  # 2 filas de altura
 
-        # Frame de la imagen (Widget 2)
+    def setup_image_frame(self):
+        """Setup image frame and layout"""
         self.qcpc_image_frame = QFrame(self.qcpc_frame_container)
         self.qcpc_image_frame.setObjectName("qcpc_image_frame")
         self.qcpc_image_frame.setFrameShape(QFrame.StyledPanel)
@@ -75,27 +95,34 @@ class qcpc_list(QWidget):
         self.qcpc_image_label.setMinimumSize(
             QSize(300, 450)
         )  # Ocupa la mitad de la altura del primer widget
+        self.qcpc_image_label.setMaximumSize(
+            QSize(600, 750)
+        )  # Ocupa la mitad de la altura del primer widget
+
         self.qcpc_image_label.setAlignment(Qt.AlignCenter)
         self.qcpc_image_layout.addWidget(self.qcpc_image_label)
 
         # Añadir el frame de la imagen al layout principal
         self.gridLayout_2.addWidget(self.qcpc_image_frame, 0, 1, 1, 1)
 
-        # Frame del texto (Widget 3)
+    def setup_text_frame(self):
+        """Setup text frame and layout"""
         self.qcpc_text_frame = QFrame(self.qcpc_frame_container)
         self.qcpc_text_frame.setObjectName("qcpc_text_frame")
         self.qcpc_text_frame.setFrameShape(QFrame.StyledPanel)
         self.qcpc_text_frame.setFrameShadow(QFrame.Raised)
         self.qcpc_text_layout = QVBoxLayout(self.qcpc_text_frame)
         self.qcpc_text_layout.setObjectName("qcpc_text_layout")
-        # self.qcpc_text_label = QTextEdit(self.qcpc_text_frame)
         self.qcpc_text_label = QTextBrowser(self.qcpc_text_frame)
         self.qcpc_text_label.setObjectName("qcpc_text_label")
-        # self.qcpc_text_label.setOpenExternalLinks(True)
         self.qcpc_text_label.setReadOnly(True)
         self.qcpc_text_layout.addWidget(self.qcpc_text_label)
 
-        # Frame de los botones (Nuevo Widget)
+        # Añadir el frame del texto al layout principal
+        self.gridLayout_2.addWidget(self.qcpc_text_frame, 1, 1, 1, 1)
+
+    def setup_button_frame(self):
+        """Setup button frame and layout"""
         self.qcpc_button_frame = QFrame(self.qcpc_frame_container)
         self.qcpc_button_frame.setObjectName("qcpc_button_frame")
         self.qcpc_button_frame.setFrameShape(QFrame.StyledPanel)
@@ -103,7 +130,6 @@ class qcpc_list(QWidget):
         self.qcpc_button_layout = QHBoxLayout(self.qcpc_button_frame)
         self.qcpc_button_layout.setObjectName("qcpc_button_layout")
 
-        # Crear y añadir los botones al layout de los botones
         self.qcpc_button_1 = QPushButton(self.qcpc_button_frame)
         self.qcpc_button_1.setObjectName("qcpc_button_1")
         self.qcpc_button_1.setText("Actualizar Listado")
@@ -128,26 +154,6 @@ class qcpc_list(QWidget):
         self.gridLayout_2.addWidget(
             self.qcpc_button_frame, 2, 0, 1, 2
         )  # Nueva fila que ocupa ambas columnas
-
-        # Añadir el contenedor principal al layout del formulario
-        self.formLayout_2.setWidget(
-            0, QFormLayout.SpanningRole, self.qcpc_frame_container
-        )
-
-        # Añadir el frame del texto al layout principal
-        self.gridLayout_2.addWidget(self.qcpc_text_frame, 1, 1, 1, 1)
-
-        # Añadir el contenedor principal al layout del formulario
-        self.formLayout_2.setWidget(
-            0, QFormLayout.SpanningRole, self.qcpc_frame_container
-        )
-
-        # Traducciones y conexiones
-        self.retranslateUi()
-        self.setup_connections()
-        QMetaObject.connectSlotsByName(self)
-
-        self.show_all_games()
 
     def retranslateUi(self):
         self.setWindowTitle(QCoreApplication.translate("qcpc_search", "Form", None))
@@ -384,7 +390,10 @@ class qcpc_list(QWidget):
         if self.image_paths:
             image_path = self.image_paths[self.current_image_index]
             pixmap = QPixmap(image_path)
-            self.qcpc_image_label.setPixmap(pixmap)
+            scaled_pixmap = pixmap.scaled(
+                600, 750, Qt.KeepAspectRatio, Qt.SmoothTransformation
+            )
+            self.qcpc_image_label.setPixmap(scaled_pixmap)
 
             # Actualizar el índice para la siguiente imagen
             self.current_image_index = (self.current_image_index + 1) % len(
