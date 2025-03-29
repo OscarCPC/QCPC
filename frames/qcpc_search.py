@@ -27,6 +27,10 @@ class qcpc_search(QWidget):
         path, config["paths"]["screenshot_path_images"]
     )
 
+    def __init__(self, parent=None):
+        super(qcpc_search, self).__init__(parent)
+        self.setupUi()
+
     def setupUi(self):
 
         self.resize(1100, 950)

@@ -29,6 +29,10 @@ class qcpc_list(QWidget):
     boxart_path_images = os.path.join(path_to_image, "boxart")
     screenshot_path_images = os.path.join(path_to_image, "screenshot")
 
+    def __init__(self, parent=None):
+        super(qcpc_list, self).__init__(parent)
+        self.setupUi()
+
     def setupUi(self):
         self.resize(1100, 950)
         self.setMinimumSize(QSize(1100, 950))

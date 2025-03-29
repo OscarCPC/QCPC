@@ -1,220 +1,370 @@
+from PyQt5.QtWidgets import QWidget, QStackedWidget, QVBoxLayout, QLabel
+from PyQt5.QtCore import (
+    Qt,
+    QPropertyAnimation,
+    QEasingCurve,
+    QParallelAnimationGroup,
+    pyqtSignal,
+    pyqtProperty,
+)
+from PyQt5.QtGui import QColor, QPainter
 from PyQt5.QtCore import *
 from PyQt5 import QtCore, QtWidgets, QtGui
-from PyQt5.QtGui import QMovie
+from PyQt5.QtGui import QMovie, QPixmap, QIcon
 import qtawesome as qta
 from .qcpc_search import *
 from .qcpc_list import *
 from .qcpc_form import *
 
 
-class Ui_MainWindow(object):
+class StackedWidgetFadeTransition(QWidget):
+    """
+    Widget para proporcionar transiciones suaves entre páginas de un QStackedWidget.
+    Esta clase maneja cuidadosamente los recursos de pintura para evitar conflictos.
+    """
 
+    transitionFinished = pyqtSignal()
+
+    def __init__(self, stackedWidget):
+        super().__init__(stackedWidget.parent())
+        self.stackedWidget = stackedWidget
+        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.setAttribute(Qt.WA_NoSystemBackground)
+        self.setAttribute(Qt.WA_OpaquePaintEvent, False)
+
+        # Configurar geometría inicial
+        self.setGeometry(self.stackedWidget.geometry())
+
+        # Inicializar variables
+        self._opacity = (
+            0.0  # Usar nombre con guión bajo para evitar conflictos con property
+        )
+        self.nextWidget = None
+        self.currentWidget = None
+        self.inTransition = False
+
+        # Crear animación
+        self.fadeAnimation = QPropertyAnimation(self, b"opacity")
+        self.fadeAnimation.setDuration(300)
+        self.fadeAnimation.setEasingCurve(QEasingCurve.InOutCubic)
+        self.fadeAnimation.finished.connect(self.onFadeFinished)
+
+        # Hacer seguimiento a cambios de geometría del stackedWidget
+        self.stackedWidget.installEventFilter(self)
+
+        # Ocultar inicialmente
+        self.hide()
+
+    def eventFilter(self, obj, event):
+        """Mantener la geometría del widget de transición sincronizada con el stackedWidget"""
+        if obj == self.stackedWidget and event.type() == event.Resize:
+            self.setGeometry(self.stackedWidget.geometry())
+        return super().eventFilter(obj, event)
+
+    def paintEvent(self, event):
+        """Pintar efecto de transición con opacidad controlada"""
+        if not self.isVisible():
+            return
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        # Pintar fondo negro con opacidad controlada
+        color = QColor(0, 0, 0, int(self._opacity * 255))
+        painter.fillRect(self.rect(), color)
+
+        painter.end()
+
+    # Eliminar la definición de property Python para evitar conflictos
+    # Ya que usaremos pyqtProperty directamente
+
+    # Estos métodos son necesarios para que QPropertyAnimation funcione
+    def getOpacity(self):
+        return self._opacity
+
+    def setOpacity(self, opacity):
+        if self._opacity != opacity:
+            self._opacity = opacity
+            self.update()
+
+    # Definir la propiedad para QPropertyAnimation
+    opacity = pyqtProperty(float, getOpacity, setOpacity)
+
+    def transitionTo(self, nextWidget):
+        """Iniciar transición hacia el widget especificado"""
+        if self.inTransition or nextWidget == self.stackedWidget.currentWidget():
+            return
+
+        self.inTransition = True
+        self.nextWidget = nextWidget
+        self.currentWidget = self.stackedWidget.currentWidget()
+
+        # Mostrar el widget de transición
+        self.raise_()
+        self.show()
+
+        # Configurar y comenzar la animación de entrada
+        self.fadeAnimation.setStartValue(0.0)
+        self.fadeAnimation.setEndValue(0.7)  # 70% de opacidad, más suave visualmente
+        self.fadeAnimation.start()
+
+    def onFadeFinished(self):
+        """Manejar el final de la animación"""
+        if not self.inTransition:
+            return
+
+        # Si estamos en fade-in, cambiar al widget destino y comenzar fade-out
+        if self.fadeAnimation.direction() == QPropertyAnimation.Forward:
+            # Cambiar al widget destino
+            self.stackedWidget.setCurrentWidget(self.nextWidget)
+
+            # Configurar animación de salida
+            self.fadeAnimation.setDirection(QPropertyAnimation.Backward)
+            self.fadeAnimation.start()
+        else:
+            # Fin de la transición
+            self.hide()
+            self.inTransition = False
+            self.nextWidget = None
+            self.currentWidget = None
+            self.fadeAnimation.setDirection(QPropertyAnimation.Forward)
+            self.transitionFinished.emit()
+
+
+class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
+        # Configuración básica
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(900, 700)
-        MainWindow.setMinimumSize(QtCore.QSize(1410, 970))
+        MainWindow.setMinimumSize(QtCore.QSize(1590, 970))
 
-        self.init_widgets()
-        self.setup_central_widget(MainWindow)
-        self.setup_layouts()
-        self.setup_frames()
-        self.setup_menu_buttons()
-        self.setup_window_controls()
-        self.setup_stacked_widget()
+        # Inicializar componentes
+        self.initComponents()
+
+        # Crear estructura principal
+        self.createCentralWidget(MainWindow)
+        self.createHeader()
+        self.createMainPanel()
         self.setup_gif()
 
-        MainWindow.setCentralWidget(self.centralwidget)
+        # Aplicar textos
         self.retranslateUi(MainWindow)
         self.stackedWidget.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
-    def init_widgets(self):
-        """Initialize main widgets"""
+    def initComponents(self):
+        # Inicializar componentes principales
         self.qcpc_search = qcpc_search()
-        self.qcpc_search.setupUi()
         self.qcpc_list = qcpc_list()
-        self.qcpc_list.setupUi()
         self.qcpc_form = qcpc_form()
-        self.qcpc_form.setupUi()
 
-    def setup_central_widget(self, MainWindow):
-        """Setup central widget and main layout"""
+    def createCentralWidget(self, MainWindow):
+        # Widget central y layout principal
         self.centralwidget = QtWidgets.QWidget(MainWindow)
-        self.centralwidget.setObjectName("centralwidget")
-
-    def setup_layouts(self):
-        """Setup main layouts"""
-        # Vertical layout for central widget
         self.verticalLayout = QtWidgets.QVBoxLayout(self.centralwidget)
         self.verticalLayout.setContentsMargins(0, 0, 0, 0)
         self.verticalLayout.setSpacing(0)
-        self.verticalLayout.setObjectName("verticalLayout")
+        MainWindow.setCentralWidget(self.centralwidget)
 
-        # Horizontal layout for inferior frame
-        self.horizontalLayout = QtWidgets.QHBoxLayout()
-        self.horizontalLayout.setContentsMargins(0, 0, 0, 0)
-        self.horizontalLayout.setSpacing(0)
-        self.horizontalLayout.setObjectName("horizontalLayout")
+    def createHeader(self):
+        # Barra superior
+        self.frame_superior = QtWidgets.QFrame(self.centralwidget)
+        self.frame_superior.setMinimumSize(QtCore.QSize(0, 35))
+        self.frame_superior.setMaximumSize(QtCore.QSize(16777215, 50))
+        # self.frame_superior.setFrameShape(QtWidgets.QFrame.StyledPanel)
 
-        # Layout for superior frame
-        self.horizontalLayout_8 = QtWidgets.QHBoxLayout()
+        # Layout horizontal para la barra superior
+        self.horizontalLayout_8 = QtWidgets.QHBoxLayout(self.frame_superior)
         self.horizontalLayout_8.setContentsMargins(2, 0, 2, 0)
         self.horizontalLayout_8.setSpacing(0)
-        self.horizontalLayout_8.setObjectName("horizontalLayout_8")
 
-        # Layout for lateral frame
-        self.verticalLayout_2 = QtWidgets.QVBoxLayout()
-        self.verticalLayout_2.setContentsMargins(0, -1, 0, 9)
-        self.verticalLayout_2.setSpacing(20)
-        self.verticalLayout_2.setObjectName("verticalLayout_2")
-
-    def setup_frames(self):
-        """Setup main frames"""
-        # Superior frame
-        self.frame_superior = self.create_frame(
-            "frame_superior", min_height=35, max_height=50
-        )
-        self.frame_superior.setLayout(self.horizontalLayout_8)
-        self.verticalLayout.addWidget(self.frame_superior)
-
-        # Inferior frame
-        self.frame_inferior = self.create_frame("frame_inferior")
-        self.frame_inferior.setLayout(self.horizontalLayout)
-        self.verticalLayout.addWidget(self.frame_inferior)
-
-        # Lateral frame
-        self.frame_lateral = self.create_frame("frame_lateral", max_width=0)
-        self.frame_lateral.setLayout(self.verticalLayout_2)
-        self.horizontalLayout.addWidget(self.frame_lateral, 0, QtCore.Qt.AlignLeft)
-
-        # Container frame
-        self.frame_contenedor = self.create_frame("frame_contenedor")
-        self.verticalLayout_3 = QtWidgets.QVBoxLayout(self.frame_contenedor)
-        self.verticalLayout_3.setContentsMargins(0, 0, 0, 0)
-        self.verticalLayout_3.setSpacing(0)
-        self.verticalLayout_3.setObjectName("verticalLayout_3")
-        self.horizontalLayout.addWidget(self.frame_contenedor)
-
-    def create_frame(
-        self, name, min_height=0, max_height=16777215, min_width=0, max_width=16777215
-    ):
-        """Helper function to create frames"""
-        frame = QtWidgets.QFrame(self.centralwidget)
-        frame.setObjectName(name)
-        frame.setFrameShape(QtWidgets.QFrame.StyledPanel)
-        frame.setFrameShadow(QtWidgets.QFrame.Raised)
-        frame.setMinimumSize(QtCore.QSize(min_width, min_height))
-        frame.setMaximumSize(QtCore.QSize(max_width, max_height))
-        return frame
-
-    def setup_menu_buttons(self):
-        """Setup menu and navigation buttons"""
-        self.create_menu_button()
-        self.create_navigation_buttons()
-
-    def create_menu_button(self):
-        """Create main menu button"""
+        # Botón de menú
         self.bt_menu = QtWidgets.QPushButton(self.frame_superior)
         self.bt_menu.setMinimumSize(QtCore.QSize(200, 0))
         self.bt_menu.setMaximumSize(QtCore.QSize(200, 16777215))
-        self.icon_menu = QtGui.QIcon()
-        self.icon_menu.addPixmap(
-            QtGui.QPixmap("./Assets/images/logo.png"),
-            QtGui.QIcon.Normal,
-            QtGui.QIcon.Off,
-        )
-        self.bt_menu.setIcon(self.icon_menu)
+        self.bt_menu.setIcon(QIcon("./Assets/images/logo.png"))
         self.bt_menu.setIconSize(QtCore.QSize(64, 32))
-        self.bt_menu.setObjectName("bt_menu")
         self.horizontalLayout_8.addWidget(self.bt_menu, 0, QtCore.Qt.AlignLeft)
+
+        # Espaciador
         spacerItem = QtWidgets.QSpacerItem(
             265, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
         )
         self.horizontalLayout_8.addItem(spacerItem)
 
-    def create_navigation_buttons(self):
-        """Create navigation buttons"""
-        buttons = [
-            ("bt_inicio", "fa.github", "yellow"),
-            ("bt_uno", "mdi.api", "yellow"),
-            ("bt_dos", "fa5.copy", "yellow"),
-            ("bt_tres", "mdi.api", "yellow"),
-            ("bt_cuatro", "fa5b.firefox-browser", "red"),
-        ]
+        # Botones de control de ventana
+        self.createWindowControlButtons()
 
-        for btn_id, icon_name, color in buttons:
-            button = QtWidgets.QPushButton(self.frame_lateral)
-            button.setMinimumSize(QtCore.QSize(0, 40))
-            button.setIcon(qta.icon(icon_name, color=color))
-            button.setIconSize(QtCore.QSize(32, 32))
-            button.setObjectName(btn_id)
-            self.verticalLayout_2.addWidget(button)
-            setattr(self, btn_id, button)
+        # Agregar barra superior al layout principal
+        self.verticalLayout.addWidget(self.frame_superior)
 
-        # Add spacer and label
-        spacerItem1 = QtWidgets.QSpacerItem(
+    def createWindowControlButtons(self):
+        # Botón minimizar
+        self.bt_minimizar = self.createWindowButton("fa.window-minimize", 35, 35)
+        self.horizontalLayout_8.addWidget(self.bt_minimizar, 0, QtCore.Qt.AlignRight)
+
+        # Botón restaurar
+        self.bt_restaurar = self.createWindowButton("fa.window-restore", 35, 35)
+        self.horizontalLayout_8.addWidget(self.bt_restaurar, 0, QtCore.Qt.AlignRight)
+
+        # Botón maximizar
+        self.bt_maximizar = self.createWindowButton("fa.window-maximize", 35, 35)
+        self.horizontalLayout_8.addWidget(self.bt_maximizar, 0, QtCore.Qt.AlignRight)
+
+        # Botón cerrar
+        self.bt_cerrar = self.createWindowButton("fa.window-close", 35, 16777215)
+        self.horizontalLayout_8.addWidget(self.bt_cerrar, 0, QtCore.Qt.AlignRight)
+
+    def createWindowButton(self, icon_name, min_width, max_width):
+        button = QtWidgets.QPushButton(self.frame_superior)
+        button.setMinimumSize(QtCore.QSize(min_width, 35))
+        button.setMaximumSize(QtCore.QSize(max_width, 35))
+        button.setText("")
+        button.setIcon(qta.icon(icon_name, color="yellow"))
+        button.setIconSize(QtCore.QSize(32, 32))
+        return button
+
+    def createMainPanel(self):
+        # Panel inferior principal
+        self.frame_inferior = QtWidgets.QFrame(self.centralwidget)
+        # self.frame_inferior.setFrameShape(QtWidgets.QFrame.StyledPanel)
+        self.horizontalLayout = QtWidgets.QHBoxLayout(self.frame_inferior)
+        self.horizontalLayout.setContentsMargins(0, 0, 0, 0)
+        self.horizontalLayout.setSpacing(0)
+
+        # Crear panel lateral y contenedor principal
+        self.createSidePanel()
+        self.createContentPanel()
+
+        # Agregar panel inferior al layout principal
+        self.verticalLayout.addWidget(self.frame_inferior)
+
+    def createSidePanel(self):
+        # Panel lateral
+        self.frame_lateral = QtWidgets.QFrame(self.frame_inferior)
+        self.frame_lateral.setMinimumSize(QtCore.QSize(0, 0))
+        self.frame_lateral.setMaximumSize(QtCore.QSize(0, 16777215))
+        # self.frame_lateral.setFrameShape(QtWidgets.QFrame.StyledPanel)
+
+        # Layout vertical para botones laterales
+        self.verticalLayout_2 = QtWidgets.QVBoxLayout(self.frame_lateral)
+        self.verticalLayout_2.setContentsMargins(0, -1, 0, 9)
+        self.verticalLayout_2.setSpacing(20)
+
+        # Crear botones laterales
+        self.createSideButtons()
+
+        # Agregar panel lateral al layout del panel inferior
+        self.horizontalLayout.addWidget(self.frame_lateral, 0, QtCore.Qt.AlignLeft)
+
+    def createSideButtons(self):
+        # Botón inicio
+        self.bt_inicio = self.createSideButton("fa.github", "bt_inicio")
+        self.verticalLayout_2.addWidget(self.bt_inicio)
+
+        # Botón uno (Text Editor)
+        self.bt_qcpc_search = self.createSideButton("fa.text-width", "bt_qcpc_search")
+        self.verticalLayout_2.addWidget(self.bt_qcpc_search)
+
+        # Botón dos (Copy Files)
+        self.bt_copy_files = self.createSideButton("fa5.copy", "bt_copy_files")
+        self.verticalLayout_2.addWidget(self.bt_copy_files)
+
+        # Botón tres (WA Zara)
+        self.bt_qcpc_form = self.createSideButton("mdi.api", "bt_qcpc_form")
+        self.verticalLayout_2.addWidget(self.bt_qcpc_form)
+
+        # Espaciador
+        spacerItem = QtWidgets.QSpacerItem(
             20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
         )
-        self.verticalLayout_2.addItem(spacerItem1)
+        self.verticalLayout_2.addItem(spacerItem)
 
-    def setup_window_controls(self):
-        """Setup window control buttons (minimize, maximize, close)"""
-        controls = [
-            ("bt_minimizar", "fa.window-minimize"),
-            ("bt_restaurar", "fa.window-restore"),
-            ("bt_maximizar", "fa.window-maximize"),
-            ("bt_cerrar", "fa.window-close"),
-        ]
+        # Etiqueta inferior
+        self.label_2 = QtWidgets.QLabel(self.frame_lateral)
+        self.label_2.setAlignment(QtCore.Qt.AlignCenter)
+        self.verticalLayout_2.addWidget(self.label_2)
 
-        for btn_id, icon_name in controls:
-            button = QtWidgets.QPushButton(self.frame_superior)
-            button.setMaximumSize(QtCore.QSize(35, 35))
-            button.setIcon(qta.icon(icon_name, color="yellow"))
-            button.setIconSize(QtCore.QSize(32, 32))
-            button.setObjectName(btn_id)
-            self.horizontalLayout_8.addWidget(button, 0, QtCore.Qt.AlignRight)
-            setattr(self, btn_id, button)
+    def createSideButton(self, icon_name, obj_name, color="yellow"):
+        button = QtWidgets.QPushButton(self.frame_lateral)
+        button.setMinimumSize(QtCore.QSize(0, 40))
+        button.setIcon(qta.icon(icon_name, color=color))
+        button.setIconSize(QtCore.QSize(32, 32))
+        button.setObjectName(obj_name)
+        return button
 
-    def setup_stacked_widget(self):
-        """Setup stacked widget and pages"""
+    def createContentPanel(self):
+        # Panel contenedor
+        self.frame_contenedor = QtWidgets.QFrame(self.frame_inferior)
+        # self.frame_contenedor.setFrameShape(QtWidgets.QFrame.StyledPanel)
+        self.frame_contenedor.setLineWidth(1)
+
+        # Layout vertical para el contenido
+        self.verticalLayout_3 = QtWidgets.QVBoxLayout(self.frame_contenedor)
+        self.verticalLayout_3.setContentsMargins(0, 0, 0, 0)
+        self.verticalLayout_3.setSpacing(0)
+
+        # Crear y configurar el stackedWidget
+        self.createStackedWidget()
+        self.configureStackedPages()
+
+        # Agregar contenedor al layout del panel inferior
+        self.horizontalLayout.addWidget(self.frame_contenedor)
+
+    def createStackedWidget(self):
+        # StackedWidget para mostrar diferentes páginas
         self.stackedWidget = QtWidgets.QStackedWidget(self.frame_contenedor)
-        self.stackedWidget.setMinimumSize(QtCore.QSize(1190, 900))
-        self.stackedWidget.setObjectName("stackedWidget")
-
-        # Add pages
-        self.setup_cover_page()
-        self.setup_content_pages()
-
+        self.stackedWidget.setMinimumSize(QtCore.QSize(1390, 900))
+        # self.stackedWidget.setFrameShape(QtWidgets.QFrame.NoFrame)
         self.verticalLayout_3.addWidget(self.stackedWidget)
 
-    def setup_cover_page(self):
-        """Setup cover page with logo"""
+    def configureStackedPages(self):
+        # Crear página inicial (home)
         self.page = QtWidgets.QWidget()
         self.page.setObjectName("cover")
         self.page_one_layout = QtWidgets.QGridLayout(self.page)
 
+        # Imagen principal
         self.label_page = QtWidgets.QLabel(self.page)
         self.label_page.setAlignment(QtCore.Qt.AlignCenter)
-        self.icon = QtGui.QPixmap("./Assets/images/cpc.png")
-        self.icon = self.icon.scaled(900, 600, Qt.KeepAspectRatio)
-        self.label_page.setPixmap(self.icon)
-
+        icon = QPixmap("./Assets/images/cpc.png")
+        self.label_page.setPixmap(icon.scaled(900, 600, Qt.KeepAspectRatio))
         self.page_one_layout.addWidget(self.label_page, 1, 1, 1, 1)
-        self.stackedWidget.addWidget(self.page)
 
-    def setup_content_pages(self):
-        """Setup content pages"""
-        pages = [
-            (self.qcpc_search, "qcpc_search"),
-            (self.qcpc_list, "qcpc_list"),
-            (self.qcpc_form, "qcpc_form"),
-        ]
+        # Agregar páginas al stack y conectar botones
+        self.addPagesToStack()
+        self.connectButtons()
 
-        for widget, name in pages:
-            page = QtWidgets.QWidget()
-            page.setObjectName(name)
-            self.stackedWidget.addWidget(widget)
-            self.stackedWidget.addWidget(page)
+    def addPagesToStack(self):
+        # Agregar todas las páginas al stackedWidget
+        self.stackedWidget.addWidget(self.page)  # Index 0 - Home page
+        self.stackedWidget.addWidget(self.qcpc_search)
+        self.stackedWidget.addWidget(self.qcpc_list)
+        self.stackedWidget.addWidget(self.qcpc_form)
+
+        # Crear el manejador de transiciones usando la clase externa
+        self.transition = StackedWidgetFadeTransition(self.stackedWidget)
+
+        # Conectar la señal de finalización si es necesario hacer algo cuando termine
+        self.transition.transitionFinished.connect(self.onTransitionFinished)
+
+    def onTransitionFinished(self):
+        """Se llama cuando la transición entre páginas ha terminado"""
+        # Puedes agregar aquí cualquier acción adicional cuando finaliza la transición
+        pass
+
+    def connectButtons(self):
+        # Conectar botones con sus respectivas páginas usando la transición
+        self.bt_inicio.clicked.connect(lambda: self.transition.transitionTo(self.page))
+        self.bt_qcpc_search.clicked.connect(
+            lambda: self.transition.transitionTo(self.qcpc_search)
+        )
+        self.bt_copy_files.clicked.connect(
+            lambda: self.transition.transitionTo(self.qcpc_list)
+        )
+        self.bt_qcpc_form.clicked.connect(
+            lambda: self.transition.transitionTo(self.qcpc_form)
+        )
 
     def setup_gif(self):
         """Setup GIF in QLabel"""
@@ -247,19 +397,17 @@ class Ui_MainWindow(object):
         self.verticalLayout_2.addLayout(self.gif_layout)
 
     def retranslateUi(self, MainWindow):
-        """Translate UI elements"""
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "QCPC"))
+        MainWindow.setWindowTitle(_translate("MainWindow", 'Run"'))
         self.bt_menu.setText(_translate("MainWindow", "    MENU "))
         self.bt_inicio.setText(_translate("MainWindow", "       Inicio"))
-        self.bt_uno.setText(_translate("MainWindow", "   Buscar"))
-        self.bt_dos.setText(_translate("MainWindow", "    Listado"))
-        self.bt_tres.setText(_translate("MainWindow", "    Formulario"))
-        self.bt_cuatro.setText(_translate("MainWindow", "     Links"))
+        self.bt_qcpc_search.setText(_translate("MainWindow", "   Text Editor"))
+        self.bt_copy_files.setText(_translate("MainWindow", "    Copy Files"))
+        self.bt_qcpc_form.setText(_translate("MainWindow", "       WA Zara"))
         self.label_2.setText(
             _translate(
                 "MainWindow",
-                '<table width="100%"><tr><td width="50%" align="left">Run</td></tr>'
-                '<tr><td width="50%" align="right">Press PLAY and then any key:</td></tr>',
+                '<table width="100%"><tr><td width="50%" align="left">Run"</td></tr>'
+                '<tr><td width="50%" align="right">Press <strong>PLAY</strong> and then any key:</td></tr>',
             )
         )

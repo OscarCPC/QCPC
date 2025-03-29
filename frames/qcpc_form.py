@@ -34,6 +34,10 @@ class qcpc_form(QWidget):
     is_editing = False
     record_id = None
 
+    def __init__(self, parent=None):
+        super(qcpc_form, self).__init__(parent)
+        self.setupUi()
+
     def setupUi(self):
         self.resize(800, 600)
         self.setMinimumSize(QSize(800, 600))
