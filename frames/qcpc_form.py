@@ -217,98 +217,110 @@ class qcpc_form(QWidget):
     def load_data(self, item_data):
         # Cargar los datos en los campos del formulario
         self.game_title_input.setText(item_data.get("game_title", ""))
-
-        # Asegurarnos de que release_date sea una cadena en el formato "yyyy-MM-dd"
         release_date = item_data.get("release_date", "2000-01-01")
         if isinstance(release_date, int):  # Si es un entero, convertirlo a cadena
             release_date = f"{release_date}-01-01"
         self.release_date_input.setDate(QDate.fromString(release_date, "yyyy-MM-dd"))
 
-        # Convertir valores numéricos a cadenas antes de usar setText
         self.platform_input.setText(str(item_data.get("platform", "")))
         self.region_id_input.setText(str(item_data.get("region_id", "")))
         self.country_id_input.setText(str(item_data.get("country_id", "")))
 
-        # Usar setCurrentText para seleccionar el desarrollador en el QComboBox
         developer_name = item_data.get("developer_id", "")
         index = self.developer_id_input.findText(str(developer_name))
         if index != -1:
             self.developer_id_input.setCurrentIndex(index)
         else:
-            self.developer_id_input.setCurrentIndex(
-                0
-            )  # Seleccionar el primer elemento si no se encuentra
+            self.developer_id_input.setCurrentIndex(0)
 
         self.front_boxart_input.setText(item_data.get("front_boxart_path", ""))
         self.back_boxart_input.setText(item_data.get("back_boxart_path", ""))
-        self.screenshot_input.setText(item_data.get("screenshot_path", ""))
+
+        # Cargar screenshot_paths en el campo correspondiente
+        screenshot_paths = item_data.get("screenshot_paths", "")
+        if isinstance(screenshot_paths, list):
+            screenshot_paths = ",".join(screenshot_paths)  # Convertir lista a cadena
+        self.screenshot_input.setText(screenshot_paths)
+
         self.url_input.setText(item_data.get("url", ""))
         self.comments_input.setPlainText(item_data.get("comentarios", ""))
 
     def save_record(self):
         game_title = self.game_title_input.text()
         release_date = self.release_date_input.date().year()
-        platform = 4914
+        platform = self.platform_input.text() or None
         region_id = self.region_id_input.text() or None
         country_id = self.country_id_input.text() or None
         developer_id = self.developer_id_input.currentData()
-        front_boxart_path = self.front_boxart_input.text()
-        back_boxart_path = self.back_boxart_input.text()
-        screenshot_paths = self.screenshot_input.text().split(";")
-        url = self.url_input.text()
-        comentarios = self.comments_input.toPlainText()
-
-        print(f"game_title: {game_title}")
-        print(f"release_date: {release_date}")
-        print(f"platform: {platform}")
-        print(f"region_id: {region_id}")
-        print(f"country_id: {country_id}")
-        print(f"developer_id: {developer_id}")
-        print(f"front_boxart_path: {front_boxart_path}")
-        print(f"back_boxart_path: {back_boxart_path}")
-        print(f"screenshot_paths: {screenshot_paths}")
-        print(f"url: {url}")
-        print(f"comentarios: {comentarios}")
+        front_boxart_path = self.front_boxart_input.text() or None
+        back_boxart_path = self.back_boxart_input.text() or None
+        screenshot_paths = [
+            path for path in self.screenshot_input.text().split(";") if path
+        ]  # Filtrar rutas vacías
+        url = self.url_input.text() or None
+        comentarios = self.comments_input.toPlainText() or None
 
         conn = sqlite3.connect(self.path_to_db)
         cursor = conn.cursor()
-        print("Conexión establecida")
-        print(f"is_editing: {self.is_editing}")
         try:
             if self.is_editing:
-                # Actualizar registro existente
-                cursor.execute(
-                    """
+                # Construir dinámicamente la consulta UPDATE
+                update_fields = []
+                update_values = []
+
+                if game_title:
+                    update_fields.append("game_title = ?")
+                    update_values.append(game_title)
+                if release_date:
+                    update_fields.append("release_date = ?")
+                    update_values.append(release_date)
+                if platform:
+                    update_fields.append("platform = ?")
+                    update_values.append(platform)
+                if region_id:
+                    update_fields.append("region_id = ?")
+                    update_values.append(region_id)
+                if country_id:
+                    update_fields.append("country_id = ?")
+                    update_values.append(country_id)
+                if developer_id:
+                    update_fields.append("developer_id = ?")
+                    update_values.append(developer_id)
+                if front_boxart_path:
+                    update_fields.append("front_boxart_path = ?")
+                    update_values.append(front_boxart_path)
+                if back_boxart_path:
+                    update_fields.append("back_boxart_path = ?")
+                    update_values.append(back_boxart_path)
+                if url:
+                    update_fields.append("url = ?")
+                    update_values.append(url)
+                if comentarios:
+                    update_fields.append("comentarios = ?")
+                    update_values.append(comentarios)
+
+                # Añadir el ID del registro al final de los valores
+                update_values.append(self.record_id)
+
+                # Construir la consulta SQL
+                update_query = f"""
                     UPDATE juegos
-                    SET game_title = ?, release_date = ?, platform = ?, region_id = ?, country_id = ?, developer_id = ?, front_boxart_path = ?, back_boxart_path = ?, url = ?, comentarios = ?
+                    SET {', '.join(update_fields)}
                     WHERE id = ?
-                """,
-                    (
-                        game_title,
-                        release_date,
-                        platform,
-                        region_id,
-                        country_id,
-                        developer_id,
-                        front_boxart_path,
-                        back_boxart_path,
-                        url,
-                        comentarios,
-                        self.record_id,
-                    ),
-                )
-                print("Registro actualizado")
+                """
+                cursor.execute(update_query, update_values)
 
                 # Actualizar capturas de pantalla existentes
                 cursor.execute(
                     "DELETE FROM screenshots WHERE game_id = ?", (self.record_id,)
                 )
-                for path in screenshot_paths:
-                    cursor.execute(
-                        "INSERT INTO screenshots (game_id, screenshot_path) VALUES (?, ?)",
-                        (self.record_id, path),
-                    )
-                print("Capturas de pantalla actualizadas")
+                if screenshot_paths:
+                    for path in screenshot_paths:
+                        cursor.execute(
+                            "INSERT INTO screenshots (game_id, screenshot_path) VALUES (?, ?)",
+                            (self.record_id, path),
+                        )
+
             else:
                 # Insertar nuevo registro
                 cursor.execute(
@@ -333,12 +345,15 @@ class qcpc_form(QWidget):
                 print("Nuevo registro insertado")
 
                 # Insertar nuevas capturas de pantalla
-                for path in screenshot_paths:
-                    cursor.execute(
-                        "INSERT INTO screenshots (game_id, screenshot_path) VALUES (?, ?)",
-                        (self.record_id, path),
-                    )
-                print("Nuevas capturas de pantalla insertadas")
+                if screenshot_paths:
+                    for path in screenshot_paths:
+                        cursor.execute(
+                            "INSERT INTO screenshots (game_id, screenshot_path) VALUES (?, ?)",
+                            (self.record_id, path),
+                        )
+                    print("Nuevas capturas de pantalla insertadas")
+                else:
+                    print("No se encontraron capturas de pantalla para insertar")
 
         except Exception as e:
             print("Error al guardar el registro")

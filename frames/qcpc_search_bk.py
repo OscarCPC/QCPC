@@ -373,13 +373,14 @@ class qcpc_search(QWidget):
             conn.close()
             return
 
+        # Verificar si los archivos existen y asignar None si no existen
         if os.path.exists(front_boxart_path):
             new_front_boxart_path = os.path.join(
                 self.path, "files", "images", "boxart", f"{game_id}_front_boxart.jpg"
             )
             shutil.move(front_boxart_path, new_front_boxart_path)
         else:
-            new_front_boxart_path = "null"
+            new_front_boxart_path = None
 
         if os.path.exists(back_boxart_path):
             new_back_boxart_path = os.path.join(
@@ -387,7 +388,7 @@ class qcpc_search(QWidget):
             )
             shutil.move(back_boxart_path, new_back_boxart_path)
         else:
-            new_back_boxart_path = "null"
+            new_back_boxart_path = None
 
         if os.path.exists(screenshot_path):
             new_screenshot_path = os.path.join(
@@ -395,19 +396,20 @@ class qcpc_search(QWidget):
             )
             shutil.move(screenshot_path, new_screenshot_path)
         else:
-            new_screenshot_path = "null"
+            new_screenshot_path = None
 
+        # Insertar los datos en la base de datos
         c.execute(
             """INSERT INTO juegos 
             (id, game_title, release_date, platform, region_id, country_id, developer_id, front_boxart_path, back_boxart_path, screenshot_path) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 game_id,
-                game_data["game_title"],
-                game_data["release_date"],
-                game_data["platform"],
-                game_data["region_id"],
-                game_data["country_id"],
+                game_data["game_title"] or None,  # Usar None si el campo está vacío
+                game_data["release_date"] or None,
+                game_data["platform"] or None,
+                game_data.get("region_id", None),
+                game_data.get("country_id", None),
                 developer_id,
                 new_front_boxart_path,
                 new_back_boxart_path,

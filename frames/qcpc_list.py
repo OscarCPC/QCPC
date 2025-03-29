@@ -332,6 +332,17 @@ class qcpc_list(QWidget):
             self.display_message("No item selected")
 
     def open_edit_form(self, item_data):
+        # Procesar screenshot_paths para asegurarse de que sea una cadena separada por comas
+        screenshot_paths = item_data.get("screenshot_paths", "")
+        if isinstance(screenshot_paths, list):
+            screenshot_paths = ",".join(screenshot_paths)  # Convertir lista a cadena
+        elif isinstance(screenshot_paths, str):
+            screenshot_paths = screenshot_paths.strip()  # Limpiar espacios en blanco
+
+        # Actualizar item_data con el formato correcto de screenshot_paths
+        item_data["screenshot_paths"] = screenshot_paths
+
+        # Crear y configurar el formulario de edición
         self.edit_form = qcpc_form()
         self.edit_form.is_editing = True  # Indicar que estamos en modo edición
         self.edit_form.record_id = item_data.get("id")  # Pasar el ID del registro
@@ -353,7 +364,7 @@ class qcpc_list(QWidget):
             c = conn.cursor()
 
             result = c.execute(
-                """SELECT 
+                """ SELECT 
                     j.id,
                     j.game_title,
                     j.release_date,
@@ -363,6 +374,8 @@ class qcpc_list(QWidget):
                     j.developer_id,
                     j.front_boxart_path,
                     j.back_boxart_path,
+                    j.url,
+                    j.comentarios,
                     d.name AS developer_name,
                     GROUP_CONCAT(s.screenshot_path) AS screenshot_paths
                 FROM 
@@ -413,53 +426,65 @@ class qcpc_list(QWidget):
             conn.close()
 
     def get_game_info(self, item_data):
+        # Reiniciar el índice de la imagen actual
+        self.current_image_index = 0
+
         # Obtener las rutas de las imágenes
-        image_paths = [
-            item_data.get("front_boxart_path", ""),
-            item_data.get("back_boxart_path", ""),
-        ]
+        image_paths = []
+
+        # Verificar y agregar front_boxart_path si existe
+        front_boxart_path = item_data.get("front_boxart_path", "")
+        if front_boxart_path and os.path.exists(front_boxart_path):
+            image_paths.append(front_boxart_path)
+
+        # Verificar y agregar back_boxart_path si existe
+        back_boxart_path = item_data.get("back_boxart_path", "")
+        if back_boxart_path and os.path.exists(back_boxart_path):
+            image_paths.append(back_boxart_path)
 
         # Obtener las rutas de las capturas de pantalla y agregarlas a la lista de rutas de imágenes
         screenshot_paths = item_data.get("screenshot_paths", "")
         if screenshot_paths:
-            image_paths.extend(screenshot_paths.split(","))
+            for path in screenshot_paths.split(","):
+                if path and os.path.exists(
+                    path
+                ):  # Verificar que la ruta no esté vacía y que el archivo exista
+                    image_paths.append(path)
 
-        # Filtrar rutas vacías
-        self.image_paths = [path for path in image_paths if path and path != "null"]
+        # Filtrar rutas vacías o inexistentes
+        self.image_paths = image_paths
 
         if self.image_paths:
             # Iniciar el slideshow solo si no está ya en curso
             if not hasattr(self, "timer") or not self.timer.isActive():
                 self.start_slideshow()
         else:
-            self.display_message("No image paths found for this item")
+            self.display_message("No image paths found for this item", "warning")
             self.qcpc_image_label.clear()  # Limpiar la etiqueta de imagen si no hay imágenes
 
         # Mostrar la información del juego en el widget de texto
-        game_info = f"""
-        <style>
-        body {{
-            color: #0F0;
-        }}
-        a {{
-            color: #0FF;
-        }}
-        b {{
-            color: yellow;
-        }}
-        </style>
-        <b>Title:</b> {item_data.get('game_title')}<br>
-        <b>Release Date:</b> {item_data.get('release_date')}<br>
-        <b>Developer:</b> {item_data.get('developer_name')}<br>
+        game_info = get_html_styles()
+        game_info += f"""
+        <div class="summary-container">
+        <table class="info-box">
+        <tr>
+        <td class="summary-label">Title:</td><td class='summary-section'>{item_data.get('game_title')}</td>
+        </tr>
+        <tr>
+        <td class="summary-label">Release Date:</td><td class='summary-section'> {item_data.get('release_date')}</td>
+        </tr>
+        <tr>
+        <td class="summary-label">Developer:</td><td class='summary-section'> {item_data.get('developer_name')}</td>        
+        </tr>
         """
-
         web_url = item_data.get("url")
         comentarios = item_data.get("comentarios")
 
         if web_url:
-            game_info += f'<b>Web:</b> <a href="{web_url}">{web_url}</a>'
+            game_info += f'<tr><td class="summary-label">Web:</td><td class="summary-section"><a href="{web_url}">{web_url}</a></td></tr>'
         if comentarios:
-            game_info += f"<br><b>Comentarios:</b> {comentarios}"
+            game_info += f'<tr><td class="summary-label"><b>Comentarios:</b></td><td class="summary-section">{comentarios}</td></tr>'
+        game_info += "</table></div>" + get_html_footer()
 
         self.qcpc_text_label.setHtml(game_info)
 
@@ -474,29 +499,49 @@ class qcpc_list(QWidget):
 
     def start_slideshow(self):
         if self.image_paths:
+            self.display_message(
+                f"Starting slideshow with images: {self.image_paths}", "info"
+            )
             self.current_image_index = 0
             self.timer = QTimer(self)
             self.timer.timeout.connect(self.show_next_image)
             QTimer.singleShot(
                 1000, self.show_next_image
             )  # Mostrar la primera imagen después de 1 segundo
-            self.timer.start(3000)  # Cambiar de imagen cada 5 segundos
+            self.timer.start(3000)  # Cambiar de imagen cada 3 segundos
         else:
-            self.display_message("No images available for slideshow")
+            self.display_message("No images available for slideshow", "warning")
 
     def show_next_image(self):
         if self.image_paths and 0 <= self.current_image_index < len(self.image_paths):
             image_path = self.image_paths[self.current_image_index]
-            pixmap = QPixmap(image_path)
-            scaled_pixmap = pixmap.scaled(
-                600, 750, Qt.KeepAspectRatio, Qt.SmoothTransformation
-            )
-            self.qcpc_image_label.setPixmap(scaled_pixmap)
+
+            try:
+                # Convertir la ruta a absoluta
+                absolute_image_path = os.path.abspath(image_path)
+
+                # Verificar si la imagen existe
+                if not os.path.exists(absolute_image_path):
+                    raise FileNotFoundError(f"Image not found: {absolute_image_path}")
+
+                # Cargar la imagen con QPixmap
+                pixmap = QPixmap(absolute_image_path)
+                if pixmap.isNull():
+                    raise ValueError(f"Failed to load image: {absolute_image_path}")
+
+                # Escalar la imagen y mostrarla en el QLabel
+                scaled_pixmap = pixmap.scaled(
+                    600, 750, Qt.KeepAspectRatio, Qt.SmoothTransformation
+                )
+                self.qcpc_image_label.setPixmap(scaled_pixmap)
+
+            except Exception as e:
+                self.display_message(str(e), "error")
 
             # Actualizar el índice para la siguiente imagen
             self.current_image_index = (self.current_image_index + 1) % len(
                 self.image_paths
             )
         else:
-            self.display_message("No valid image paths to display")
+            self.display_message("No valid image paths to display", "warning")
             self.qcpc_image_label.clear()  # Limpiar la etiqueta de imagen si no hay imágenes
