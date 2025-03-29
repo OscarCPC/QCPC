@@ -226,12 +226,16 @@ class qcpc_form(QWidget):
         self.region_id_input.setText(str(item_data.get("region_id", "")))
         self.country_id_input.setText(str(item_data.get("country_id", "")))
 
-        developer_name = item_data.get("developer_id", "")
-        index = self.developer_id_input.findText(str(developer_name))
+        # Seleccionar el desarrollador correspondiente en el QComboBox
+        developer_id = item_data.get("developer_id", "")
+        print(f"Developer ID: {developer_id}")
+        index = self.developer_id_input.findData(developer_id)  # Buscar por el ID
         if index != -1:
             self.developer_id_input.setCurrentIndex(index)
         else:
-            self.developer_id_input.setCurrentIndex(0)
+            self.developer_id_input.setCurrentIndex(
+                0
+            )  # Seleccionar el primer elemento si no se encuentra
 
         self.front_boxart_input.setText(item_data.get("front_boxart_path", ""))
         self.back_boxart_input.setText(item_data.get("back_boxart_path", ""))

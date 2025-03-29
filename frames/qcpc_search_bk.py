@@ -31,80 +31,99 @@ class qcpc_search(QWidget):
 
     def setupUi(self):
         self.resize(1100, 950)
-        self.setMinimumSize(QSize(1100, 950))
+        self.setMinimumSize(
+            QSize(800, 600)
+        )  # Ajustar el tamaño mínimo para mayor flexibilidad
 
-        self.formLayout_2 = QFormLayout(self)
-        self.qcpc_frame_container = QFrame(self)
-        self.qcpc_frame_container.setFrameShape(QFrame.StyledPanel)
-        self.qcpc_frame_container.setFrameShadow(QFrame.Raised)
+        # Crear el contenedor principal
+        self.main_layout = QGridLayout(self)
+        self.main_layout.setContentsMargins(10, 10, 10, 10)
+        self.main_layout.setSpacing(10)
 
-        self.gridLayout_2 = QGridLayout(self.qcpc_frame_container)
-        self.qcpc_input_frame = QFrame(self.qcpc_frame_container)
-        self.qcpc_input_frame.setLayoutDirection(Qt.RightToLeft)
-        self.qcpc_input_frame.setFrameShape(QFrame.StyledPanel)
-        self.qcpc_input_frame.setFrameShadow(QFrame.Raised)
+        # Configurar los elementos de la UI
+        self.setup_input_frame()
+        self.setup_image_frame()
+        self.setup_buttons()
 
-        self.qcpc_input_layout = QFormLayout(self.qcpc_input_frame)
-        self.qcpc_input_label = QLabel(self.qcpc_input_frame)
-        self.qcpc_input_label.setMinimumSize(QSize(250, 0))
-        self.qcpc_input_label.setAlignment(Qt.AlignCenter)
-        self.qcpc_input_label.setText("Título a buscar")
-
-        self.qcpc_input_layout.setWidget(
-            0, QFormLayout.FieldRole, self.qcpc_input_label
-        )
-
-        self.qcpc_input_text = QPlainTextEdit(self.qcpc_input_frame)
-        self.qcpc_input_text.setMinimumSize(QSize(275, 30))
-        self.qcpc_input_text.setMaximumSize(QSize(16777215, 30))
-        self.qcpc_input_text.installEventFilter(self)
-        self.qcpc_input_layout.setWidget(1, QFormLayout.FieldRole, self.qcpc_input_text)
-
-        self.qcpc_input_search = QPushButton(self.qcpc_input_frame)
-        self.qcpc_input_search.setMinimumSize(QSize(80, 30))
-        self.qcpc_input_search.setMaximumSize(QSize(80, 30))
-        self.qcpc_input_search.setLayoutDirection(Qt.LeftToRight)
-        self.qcpc_input_search.setText("Buscar")
-        self.qcpc_input_search.setDefault(True)
-        self.qcpc_input_search.setShortcut(Qt.Key_Return)
-        self.qcpc_input_layout.setWidget(
-            2, QFormLayout.FieldRole, self.qcpc_input_search
-        )
-
-        self.qcpc_form_editable = QFormLayout()  # Layout para el formulario editable
-        self.qcpc_input_layout.setLayout(
-            3, QFormLayout.SpanningRole, self.qcpc_form_editable
-        )
-
-        self.gridLayout_2.addWidget(self.qcpc_input_frame, 0, 0, 1, 1)
-
-        self.qcpc_image_frame = QFrame(self)
-        self.qcpc_image_frame.setMinimumSize(QSize(600, 900))
-        self.qcpc_image_frame.setFrameShape(QFrame.StyledPanel)
-        self.qcpc_image_frame.setFrameShadow(QFrame.Raised)
-        self.horizontalLayout = QHBoxLayout(self.qcpc_image_frame)
-        self.horizontalLayout.setContentsMargins(8, 8, 8, 8)
-
-        self.qcpc_image_label = QLabel(self.qcpc_image_frame)
-        self.qcpc_image_label.setMinimumSize(QSize(600, 900))
-        self.qcpc_image_label.setAlignment(Qt.AlignCenter)
-
-        self.horizontalLayout.addWidget(self.qcpc_image_label)
-        self.gridLayout_2.addWidget(self.qcpc_image_frame, 0, 1, 2, 1)
-
-        self.formLayout_2.setWidget(0, QFormLayout.LabelRole, self.qcpc_frame_container)
-
-        self.qcpc_input_frame_save = QPushButton(self.qcpc_frame_container)
-        self.qcpc_input_frame_save.setText("Guardar Selección")
-        self.qcpc_input_layout.addWidget(self.qcpc_input_frame_save)
-
-        self.qcpc_input_frame_delete = QPushButton(self.qcpc_frame_container)
-        self.qcpc_input_frame_delete.setText("Borrar")
-        self.qcpc_input_layout.addWidget(self.qcpc_input_frame_delete)
+        # Añadir los elementos al layout principal
+        self.main_layout.addWidget(
+            self.qcpc_input_frame, 0, 0, 1, 1
+        )  # Entrada en la esquina superior izquierda
+        self.main_layout.addWidget(
+            self.qcpc_image_frame, 0, 1, 2, 1
+        )  # Imagen ocupa dos filas
+        self.main_layout.addWidget(
+            self.qcpc_button_frame, 1, 0, 1, 1
+        )  # Botones en la esquina inferior izquierda
 
         self.retranslateUi(self)
         self.setup_connections()
         QMetaObject.connectSlotsByName(self)
+
+    def setup_input_frame(self):
+        """Configurar el cuadro de entrada"""
+        self.qcpc_input_frame = QFrame(self)
+        self.qcpc_input_frame.setFrameShape(QFrame.StyledPanel)
+        self.qcpc_input_frame.setFrameShadow(QFrame.Raised)
+
+        self.qcpc_input_layout = QVBoxLayout(self.qcpc_input_frame)
+        self.qcpc_input_layout.setContentsMargins(10, 10, 10, 10)
+
+        # Etiqueta de entrada
+        self.qcpc_input_label = QLabel("Título a buscar", self.qcpc_input_frame)
+        self.qcpc_input_label.setAlignment(Qt.AlignCenter)
+        self.qcpc_input_layout.addWidget(self.qcpc_input_label)
+
+        # Campo de texto
+        self.qcpc_input_text = QLineEdit(self.qcpc_input_frame)
+        self.qcpc_input_text.setPlaceholderText("Introduce el título del juego")
+        self.qcpc_input_layout.addWidget(self.qcpc_input_text)
+
+        # Botón de búsqueda
+        self.qcpc_input_search = QPushButton("Buscar", self.qcpc_input_frame)
+        self.qcpc_input_search.setDefault(True)
+        self.qcpc_input_search.setShortcut(Qt.Key_Return)
+        self.qcpc_input_layout.addWidget(self.qcpc_input_search)
+
+        # Formulario editable
+        self.qcpc_form_editable = QFormLayout()
+        self.qcpc_input_layout.addLayout(self.qcpc_form_editable)
+
+    def setup_image_frame(self):
+        """Configurar el cuadro de imagen"""
+        self.qcpc_image_frame = QFrame(self)
+        self.qcpc_image_frame.setFrameShape(QFrame.StyledPanel)
+        self.qcpc_image_frame.setFrameShadow(QFrame.Raised)
+
+        self.qcpc_image_layout = QVBoxLayout(self.qcpc_image_frame)
+        self.qcpc_image_layout.setContentsMargins(10, 10, 10, 10)
+
+        # Etiqueta de imagen
+        self.qcpc_image_label = QLabel(self.qcpc_image_frame)
+        self.qcpc_image_label.setAlignment(Qt.AlignCenter)
+        self.qcpc_image_label.setStyleSheet(
+            "border: 1px solid gray;"
+        )  # Añadir un borde para la imagen
+        self.qcpc_image_layout.addWidget(self.qcpc_image_label)
+
+    def setup_buttons(self):
+        """Configurar el cuadro de botones"""
+        self.qcpc_button_frame = QFrame(self)
+        self.qcpc_button_frame.setFrameShape(QFrame.StyledPanel)
+        self.qcpc_button_frame.setFrameShadow(QFrame.Raised)
+
+        self.qcpc_button_layout = QHBoxLayout(self.qcpc_button_frame)
+        self.qcpc_button_layout.setContentsMargins(10, 10, 10, 10)
+
+        # Botón Guardar
+        self.qcpc_input_frame_save = QPushButton(
+            "Guardar Selección", self.qcpc_button_frame
+        )
+        self.qcpc_button_layout.addWidget(self.qcpc_input_frame_save)
+
+        # Botón Borrar
+        self.qcpc_input_frame_delete = QPushButton("Borrar", self.qcpc_button_frame)
+        self.qcpc_button_layout.addWidget(self.qcpc_input_frame_delete)
 
     def retranslateUi(self, qcpc_search):
         qcpc_search.setWindowTitle(

@@ -6,6 +6,7 @@ import os
 import requests
 import sqlite3
 from .common import *
+from .qcpc_form import *
 
 
 class qcpc_search(QWidget):
@@ -184,57 +185,27 @@ class qcpc_search(QWidget):
         )  # Colocar en la primera columna y segunda fila
 
     def create_editable_form(self):
-        # Aquí es donde se definirá el formulario editable
-        self.qcpc_form_editable_frame = QFrame(self.qcpc_frame_container)
-        self.qcpc_form_editable_frame.setObjectName("qcpc_form_editable_frame")
-        self.qcpc_form_editable_frame.setFrameShape(QFrame.StyledPanel)
-        self.qcpc_form_editable_frame.setFrameShadow(QFrame.Raised)
-        self.qcpc_form_editable_layout = QFormLayout(self.qcpc_form_editable_frame)
-        self.qcpc_form_editable_layout.setObjectName("qcpc_form_editable_layout")
-        self.gridLayout_2.addWidget(
-            self.qcpc_form_editable_frame, 1, 1, 1, 1
-        )  # Segunda columna, segunda fila
-        self.gridLayout_2.addWidget(
-            self.qcpc_image_frame, 0, 1, 1, 1
-        )  # Segunda columna, primera fila, ocupa una fila
-
+        # Obtener el elemento seleccionado en la tabla de resultados
         selected_item = self.qcpc_result_table.currentItem()
 
+        # Verificar si hay un juego seleccionado
         if selected_item is None:
             show_results(
                 self.qcpc_input_output_text, "No hay ningún juego seleccionado."
             )
             return
 
+        # Obtener los datos del juego seleccionado
         game_data = selected_item.data(Qt.UserRole)
-        game_id = str(game_data["game_id"])
-        # Añadir campos al formulario
-        self.qcpc_form_editable_layout.addRow(
-            "ID del Juego:", QLabel(str(game_data["game_id"]))
-        )
-        self.game_title_input = QLineEdit(str(game_data["game_title"]))
-        self.qcpc_form_editable_layout.addRow("Título:", self.game_title_input)
-        self.release_date_input = QLineEdit(str(game_data["release_date"]))
-        self.qcpc_form_editable_layout.addRow(
-            "Fecha de lanzamiento:", self.release_date_input
-        )
-        self.platform_input = QLineEdit(str(game_data["platform"]))
-        self.qcpc_form_editable_layout.addRow("Plataforma:", self.platform_input)
-        self.developer_input = QLineEdit(str(game_data["developers"]))
-        self.qcpc_form_editable_layout.addRow("Desarrollador:", self.developer_input)
 
-        self.qcpc_image_frame.setMinimumSize(QSize(600, 450))
-        self.qcpc_image_frame.setMaximumSize(QSize(16777215, 16777215))
-        self.qcpc_image_label.setMinimumSize(QSize(600, 450))
-        self.qcpc_image_label.setMaximumSize(QSize(16777215, 16777215))
+        # Crear una instancia de Qcpc_form y pasar los datos del juego
+        self.edit_form = qcpc_form()
+        self.edit_form.is_editing = True  # Indicar que estamos en modo edición
+        self.edit_form.record_id = game_data["game_id"]  # Pasar el ID del juego
+        self.edit_form.load_data(game_data)  # Cargar los datos en el formulario
 
-        # Forzar actualización del layout y el QLabel
-        self.qcpc_image_frame.adjustSize()  # Asegurarse de que el frame redimensione sus hijos
-        self.qcpc_image_label.adjustSize()  # Asegurar que el QLabel ajuste su tamaño
-        self.qcpc_image_label.update()  # Forzar actualización visual del QLabel
-        self.qcpc_image_frame.update()  # Forzar actualización visual
-
-        QTimer.singleShot(0, lambda: self.update_image(game_id))
+        # Mostrar el formulario
+        self.edit_form.show()
 
     def update_image(self, game_id):
         # Obtener el tamaño actualizado del QLabel

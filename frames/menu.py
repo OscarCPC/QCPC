@@ -260,19 +260,23 @@ class Ui_MainWindow(object):
     def createSideButtons(self):
         """Crear y añadir botones al panel lateral"""
         # Botón inicio
-        self.bt_inicio = self.createSideButton("fa.github", "bt_inicio")
+        self.bt_inicio = self.createSideButton("ri.computer-line", "bt_inicio")
         self.verticalLayout_2.addWidget(self.bt_inicio)
 
         # Botón uno (Text Editor)
-        self.bt_qcpc_search = self.createSideButton("fa.text-width", "bt_qcpc_search")
+        self.bt_qcpc_search = self.createSideButton(
+            "mdi.cloud-search-outline", "bt_qcpc_search"
+        )
         self.verticalLayout_2.addWidget(self.bt_qcpc_search)
 
         # Botón dos (Copy Files)
-        self.bt_qcpc_list = self.createSideButton("fa5.copy", "bt_qcpc_list")
+        self.bt_qcpc_list = self.createSideButton("ei.list-alt", "bt_qcpc_list")
         self.verticalLayout_2.addWidget(self.bt_qcpc_list)
 
         # Botón tres (WA Zara)
-        self.bt_qcpc_form = self.createSideButton("mdi.api", "bt_qcpc_form")
+        self.bt_qcpc_form = self.createSideButton(
+            "mdi.form-textbox-password", "bt_qcpc_form"
+        )
         self.verticalLayout_2.addWidget(self.bt_qcpc_form)
 
         # Espaciador para empujar los elementos hacia arriba si hay espacio adicional
@@ -401,10 +405,10 @@ class Ui_MainWindow(object):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", 'Run"'))
         self.bt_menu.setText(_translate("MainWindow", "    MENU "))
-        self.bt_inicio.setText(_translate("MainWindow", "       Inicio"))
-        self.bt_qcpc_search.setText(_translate("MainWindow", "   Buscar"))
+        self.bt_inicio.setText(_translate("MainWindow", "     Inicio"))
+        self.bt_qcpc_search.setText(_translate("MainWindow", "     Buscar"))
         self.bt_qcpc_list.setText(_translate("MainWindow", "    Listado"))
-        self.bt_qcpc_form.setText(_translate("MainWindow", "      Formulario"))
+        self.bt_qcpc_form.setText(_translate("MainWindow", "  Formulario"))
         self.label_2.setText(
             _translate(
                 "MainWindow",
