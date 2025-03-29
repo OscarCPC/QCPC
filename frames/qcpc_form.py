@@ -56,112 +56,133 @@ class qcpc_form(QWidget):
         # Crear y añadir los widgets al grid
         current_row = 0
 
-        # Título del juego
+        # Sección: Título del juego
+        title_layout = QHBoxLayout()
         self.game_title_label = QLabel("Título del juego:", self.mainFrame)
         self.game_title_input = QLineEdit(self.mainFrame)
-        self.gridLayout.addWidget(self.game_title_label, current_row, 0)
-        self.gridLayout.addWidget(self.game_title_input, current_row, 1, 1, 2)
+        title_layout.addWidget(self.game_title_label)
+        title_layout.addWidget(self.game_title_input)
+        self.gridLayout.addLayout(title_layout, current_row, 0, 1, 2)
 
-        # Fecha de lanzamiento
+        # Sección: Fecha de lanzamiento
         current_row += 1
+        release_date_layout = QHBoxLayout()
         self.release_date_label = QLabel("Fecha de lanzamiento:", self.mainFrame)
         self.release_date_input = QDateEdit(self.mainFrame)
         self.release_date_input.setDisplayFormat("yyyy")
-        self.gridLayout.addWidget(self.release_date_label, current_row, 0)
-        self.gridLayout.addWidget(self.release_date_input, current_row, 1)
+        release_date_layout.addWidget(self.release_date_label)
+        release_date_layout.addWidget(self.release_date_input)
+        self.gridLayout.addLayout(release_date_layout, current_row, 0, 1, 2)
 
-        # Plataforma
+        # Sección: Plataforma
         current_row += 1
+        platform_layout = QHBoxLayout()
         self.platform_label = QLabel("Plataforma:", self.mainFrame)
         self.platform_input = QLineEdit(self.mainFrame)
-        self.gridLayout.addWidget(self.platform_label, current_row, 0)
-        self.gridLayout.addWidget(self.platform_input, current_row, 1, 1, 2)
+        platform_layout.addWidget(self.platform_label)
+        platform_layout.addWidget(self.platform_input)
+        self.gridLayout.addLayout(platform_layout, current_row, 0, 1, 2)
 
-        # Región
+        # Sección: Región
         current_row += 1
+        region_layout = QHBoxLayout()
         self.region_id_label = QLabel("ID de región:", self.mainFrame)
         self.region_id_input = QLineEdit(self.mainFrame)
-        self.gridLayout.addWidget(self.region_id_label, current_row, 0)
-        self.gridLayout.addWidget(self.region_id_input, current_row, 1, 1, 2)
+        region_layout.addWidget(self.region_id_label)
+        region_layout.addWidget(self.region_id_input)
+        self.gridLayout.addLayout(region_layout, current_row, 0, 1, 2)
 
-        # País
+        # Sección: País
         current_row += 1
+        country_layout = QHBoxLayout()
         self.country_id_label = QLabel("ID de país:", self.mainFrame)
         self.country_id_input = QLineEdit(self.mainFrame)
-        self.gridLayout.addWidget(self.country_id_label, current_row, 0)
-        self.gridLayout.addWidget(self.country_id_input, current_row, 1, 1, 2)
+        country_layout.addWidget(self.country_id_label)
+        country_layout.addWidget(self.country_id_input)
+        self.gridLayout.addLayout(country_layout, current_row, 0, 1, 2)
 
-        # Desarrollador
-        # Desarrollador
+        # Sección: Desarrollador
         current_row += 1
+        developer_layout = QHBoxLayout()
         self.developer_id_label = QLabel("Desarrollador:", self.mainFrame)
         self.developer_id_input = QComboBox(self.mainFrame)
-        self.developer_id_input.setFixedSize(
-            int(self.width() / 2), 40
-        )  # Tamaño fijo proporcional
-        view = self.developer_id_input.view()
-        view.setMinimumHeight(100)  # Altura mínima del desplegable
-        view.setMaximumHeight(300)  # Altura máxima del desplegable
+        self.developer_id_input.setFixedHeight(40)
+        self.developer_id_input.view().setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.developer_id_input.setSizeAdjustPolicy(QComboBox.AdjustToContents)
+        developer_layout.addWidget(self.developer_id_label)
+        developer_layout.addWidget(self.developer_id_input)
+        self.gridLayout.addLayout(developer_layout, current_row, 0, 1, 2)
 
-        self.gridLayout.addWidget(self.developer_id_label, current_row, 0)
-        self.gridLayout.addWidget(self.developer_id_input, current_row, 1, 1, 2)
-        # Portada frontal
+        # Sección: Portada frontal
         current_row += 1
+        front_boxart_layout = QHBoxLayout()
         self.front_boxart_label = QLabel("Portada (frontal):", self.mainFrame)
         self.front_boxart_input = QLineEdit(self.mainFrame)
         self.front_boxart_button = QPushButton("Seleccionar archivo", self.mainFrame)
         self.front_boxart_button.clicked.connect(self.select_front_boxart_file)
-        self.gridLayout.addWidget(self.front_boxart_label, current_row, 0)
-        self.gridLayout.addWidget(self.front_boxart_input, current_row, 1)
-        self.gridLayout.addWidget(self.front_boxart_button, current_row, 2)
+        front_boxart_layout.addWidget(self.front_boxart_label)
+        front_boxart_layout.addWidget(self.front_boxart_input)
+        front_boxart_layout.addWidget(self.front_boxart_button)
+        self.gridLayout.addLayout(front_boxart_layout, current_row, 0, 1, 2)
 
-        # Portada trasera
+        # Sección: Portada trasera
         current_row += 1
+        back_boxart_layout = QHBoxLayout()
         self.back_boxart_label = QLabel("Portada (trasera):", self.mainFrame)
         self.back_boxart_input = QLineEdit(self.mainFrame)
         self.back_boxart_button = QPushButton("Seleccionar archivo", self.mainFrame)
         self.back_boxart_button.clicked.connect(self.select_back_boxart_file)
-        self.gridLayout.addWidget(self.back_boxart_label, current_row, 0)
-        self.gridLayout.addWidget(self.back_boxart_input, current_row, 1)
-        self.gridLayout.addWidget(self.back_boxart_button, current_row, 2)
+        back_boxart_layout.addWidget(self.back_boxart_label)
+        back_boxart_layout.addWidget(self.back_boxart_input)
+        back_boxart_layout.addWidget(self.back_boxart_button)
+        self.gridLayout.addLayout(back_boxart_layout, current_row, 0, 1, 2)
 
-        # Capturas de pantalla
+        # Sección: Capturas de pantalla
         current_row += 1
+        screenshot_layout = QHBoxLayout()
         self.screenshot_label = QLabel("Captura de pantalla:", self.mainFrame)
         self.screenshot_input = QLineEdit(self.mainFrame)
         self.screenshot_button = QPushButton("Seleccionar archivo", self.mainFrame)
         self.screenshot_button.clicked.connect(self.select_screenshot_file)
-        self.gridLayout.addWidget(self.screenshot_label, current_row, 0)
-        self.gridLayout.addWidget(self.screenshot_input, current_row, 1)
-        self.gridLayout.addWidget(self.screenshot_button, current_row, 2)
+        screenshot_layout.addWidget(self.screenshot_label)
+        screenshot_layout.addWidget(self.screenshot_input)
+        screenshot_layout.addWidget(self.screenshot_button)
+        self.gridLayout.addLayout(screenshot_layout, current_row, 0, 1, 2)
 
-        # URL
+        # Sección: URL
         current_row += 1
+        url_layout = QHBoxLayout()
         self.url_label = QLabel("URL:", self.mainFrame)
         self.url_input = QLineEdit(self.mainFrame)
-        self.gridLayout.addWidget(self.url_label, current_row, 0)
-        self.gridLayout.addWidget(self.url_input, current_row, 1, 1, 2)
+        url_layout.addWidget(self.url_label)
+        url_layout.addWidget(self.url_input)
+        self.gridLayout.addLayout(url_layout, current_row, 0, 1, 2)
 
-        # Comentarios
+        # Sección: Comentarios
         current_row += 1
+        comments_layout = QVBoxLayout()
         self.comments_label = QLabel("Comentarios:", self.mainFrame)
         self.comments_input = QTextEdit(self.mainFrame)
-        self.gridLayout.addWidget(self.comments_label, current_row, 0)
-        self.gridLayout.addWidget(self.comments_input, current_row, 1, 1, 2)
+        comments_layout.addWidget(self.comments_label)
+        comments_layout.addWidget(self.comments_input)
+        self.gridLayout.addLayout(comments_layout, current_row, 0, 1, 2)
 
-        # Botones
+        # Sección: Botones
         current_row += 1
+        buttons_layout = QHBoxLayout()
         self.save_button = QPushButton("Guardar", self.mainFrame)
         self.cancel_button = QPushButton("Cancelar", self.mainFrame)
-        self.gridLayout.addWidget(self.save_button, current_row, 1)
-        self.gridLayout.addWidget(self.cancel_button, current_row, 2)
+        buttons_layout.addStretch()
+        buttons_layout.addWidget(self.save_button)
+        buttons_layout.addWidget(self.cancel_button)
+        self.gridLayout.addLayout(buttons_layout, current_row, 0, 1, 2)
 
         # Añadir el frame principal al layout principal
         self.mainLayout.addWidget(self.mainFrame)
 
         # Configurar el espaciado y márgenes
-        self.gridLayout.setSpacing(10)
-        self.gridLayout.setContentsMargins(10, 10, 10, 10)
+        self.gridLayout.setSpacing(15)
+        self.gridLayout.setContentsMargins(20, 20, 20, 20)
 
         # Configurar traducciones y conexiones
         self.retranslateUi()
@@ -194,31 +215,35 @@ class qcpc_form(QWidget):
             conn.close()
 
     def load_data(self, item_data):
-        self.is_editing = True
-        self.record_id = item_data.get(
-            "id"
-        )  # Suponiendo que cada registro tiene un ID único
+        # Cargar los datos en los campos del formulario
+        self.game_title_input.setText(item_data.get("game_title", ""))
 
-        self.game_title_input.setText(str(item_data.get("game_title", "")))
+        # Asegurarnos de que release_date sea una cadena en el formato "yyyy-MM-dd"
+        release_date = item_data.get("release_date", "2000-01-01")
+        if isinstance(release_date, int):  # Si es un entero, convertirlo a cadena
+            release_date = f"{release_date}-01-01"
+        self.release_date_input.setDate(QDate.fromString(release_date, "yyyy-MM-dd"))
 
-        release_date = item_data.get("release_date")
-        if release_date:
-            self.release_date_input.setDate(QDate(int(release_date), 1, 1))
-        else:
-            self.release_date_input.setDate(QDate.currentDate())
-        if item_data.get("platform") == 4914:
-            self.platform_input.setText(str("Amstrad CPC"))
-        else:
-            self.platform_input.setText(str(item_data.get("platform", "")))
-
+        # Convertir valores numéricos a cadenas antes de usar setText
+        self.platform_input.setText(str(item_data.get("platform", "")))
         self.region_id_input.setText(str(item_data.get("region_id", "")))
         self.country_id_input.setText(str(item_data.get("country_id", "")))
-        self.developer_id_input.setText(str(item_data.get("developer_id", "")))
-        self.front_boxart_input.setText(str(item_data.get("front_boxart_path", "")))
-        self.back_boxart_input.setText(str(item_data.get("back_boxart_path", "")))
-        self.screenshot_input.setText(str(item_data.get("screenshot_path", "")))
-        self.url_input.setText(str(item_data.get("url", "")))
-        self.comments_input.setPlainText(str(item_data.get("comentarios", "")))
+
+        # Usar setCurrentText para seleccionar el desarrollador en el QComboBox
+        developer_name = item_data.get("developer_id", "")
+        index = self.developer_id_input.findText(str(developer_name))
+        if index != -1:
+            self.developer_id_input.setCurrentIndex(index)
+        else:
+            self.developer_id_input.setCurrentIndex(
+                0
+            )  # Seleccionar el primer elemento si no se encuentra
+
+        self.front_boxart_input.setText(item_data.get("front_boxart_path", ""))
+        self.back_boxart_input.setText(item_data.get("back_boxart_path", ""))
+        self.screenshot_input.setText(item_data.get("screenshot_path", ""))
+        self.url_input.setText(item_data.get("url", ""))
+        self.comments_input.setPlainText(item_data.get("comentarios", ""))
 
     def save_record(self):
         game_title = self.game_title_input.text()
