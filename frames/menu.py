@@ -153,9 +153,9 @@ class Ui_MainWindow(object):
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def initComponents(self):
-        # Inicializar componentes principales
-        self.qcpc_search = qcpc_search()
-        self.qcpc_list = qcpc_list()
+        """Inicializar componentes principales"""
+        self.qcpc_search = qcpc_search()  # Página de búsqueda
+        self.qcpc_list = qcpc_list()  # Página de listado
         self.qcpc_form = qcpc_form()
 
     def createCentralWidget(self, MainWindow):
@@ -258,6 +258,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout.addWidget(self.frame_lateral, 0, QtCore.Qt.AlignLeft)
 
     def createSideButtons(self):
+        """Crear y añadir botones al panel lateral"""
         # Botón inicio
         self.bt_inicio = self.createSideButton("fa.github", "bt_inicio")
         self.verticalLayout_2.addWidget(self.bt_inicio)
@@ -267,14 +268,14 @@ class Ui_MainWindow(object):
         self.verticalLayout_2.addWidget(self.bt_qcpc_search)
 
         # Botón dos (Copy Files)
-        self.bt_copy_files = self.createSideButton("fa5.copy", "bt_copy_files")
-        self.verticalLayout_2.addWidget(self.bt_copy_files)
+        self.bt_qcpc_list = self.createSideButton("fa5.copy", "bt_qcpc_list")
+        self.verticalLayout_2.addWidget(self.bt_qcpc_list)
 
         # Botón tres (WA Zara)
         self.bt_qcpc_form = self.createSideButton("mdi.api", "bt_qcpc_form")
         self.verticalLayout_2.addWidget(self.bt_qcpc_form)
 
-        # Espaciador
+        # Espaciador para empujar los elementos hacia arriba si hay espacio adicional
         spacerItem = QtWidgets.QSpacerItem(
             20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
         )
@@ -336,11 +337,11 @@ class Ui_MainWindow(object):
         self.connectButtons()
 
     def addPagesToStack(self):
-        # Agregar todas las páginas al stackedWidget
+        """Agregar todas las páginas al stackedWidget"""
         self.stackedWidget.addWidget(self.page)  # Index 0 - Home page
-        self.stackedWidget.addWidget(self.qcpc_search)
-        self.stackedWidget.addWidget(self.qcpc_list)
-        self.stackedWidget.addWidget(self.qcpc_form)
+        self.stackedWidget.addWidget(self.qcpc_search)  # Index 1 - Buscar
+        self.stackedWidget.addWidget(self.qcpc_list)  # Index 2 - Listado
+        self.stackedWidget.addWidget(self.qcpc_form)  # Index 3 - Formulario
 
         # Crear el manejador de transiciones usando la clase externa
         self.transition = StackedWidgetFadeTransition(self.stackedWidget)
@@ -354,12 +355,12 @@ class Ui_MainWindow(object):
         pass
 
     def connectButtons(self):
-        # Conectar botones con sus respectivas páginas usando la transición
+        """Conectar botones con sus respectivas páginas usando la transición"""
         self.bt_inicio.clicked.connect(lambda: self.transition.transitionTo(self.page))
         self.bt_qcpc_search.clicked.connect(
             lambda: self.transition.transitionTo(self.qcpc_search)
         )
-        self.bt_copy_files.clicked.connect(
+        self.bt_qcpc_list.clicked.connect(
             lambda: self.transition.transitionTo(self.qcpc_list)
         )
         self.bt_qcpc_form.clicked.connect(
@@ -401,9 +402,9 @@ class Ui_MainWindow(object):
         MainWindow.setWindowTitle(_translate("MainWindow", 'Run"'))
         self.bt_menu.setText(_translate("MainWindow", "    MENU "))
         self.bt_inicio.setText(_translate("MainWindow", "       Inicio"))
-        self.bt_qcpc_search.setText(_translate("MainWindow", "   Text Editor"))
-        self.bt_copy_files.setText(_translate("MainWindow", "    Copy Files"))
-        self.bt_qcpc_form.setText(_translate("MainWindow", "       WA Zara"))
+        self.bt_qcpc_search.setText(_translate("MainWindow", "   Buscar"))
+        self.bt_qcpc_list.setText(_translate("MainWindow", "    Listado"))
+        self.bt_qcpc_form.setText(_translate("MainWindow", "      Formulario"))
         self.label_2.setText(
             _translate(
                 "MainWindow",
