@@ -4,12 +4,12 @@ from PyQt5.QtWidgets import *  # type: ignore
 import datetime
 from httpx import delete, get
 from openpyxl import Workbook
-import json
 import os
 import sqlite3
 import pandas as pd
 from .common import *
 from .qcpc_form import qcpc_form
+import os
 
 
 class qcpc_list(QWidget):
@@ -347,6 +347,9 @@ class qcpc_list(QWidget):
         self.edit_form.is_editing = True  # Indicar que estamos en modo edición
         self.edit_form.record_id = item_data.get("id")  # Pasar el ID del registro
         self.edit_form.load_data(item_data)  # Cargar los datos en el formulario
+        self.edit_form.resize(
+            900, 600
+        )  # Alternativa si quieres que sea redimensionable
         self.edit_form.closed.connect(
             self.refresh_list
         )  # Conectar la señal closed a refresh_list
@@ -524,15 +527,31 @@ class qcpc_list(QWidget):
                 if not os.path.exists(absolute_image_path):
                     raise FileNotFoundError(f"Image not found: {absolute_image_path}")
 
-                # Cargar la imagen con QPixmap
-                pixmap = QPixmap(absolute_image_path)
-                if pixmap.isNull():
+                # Crear una imagen limpia sin metadatos
+                image = QImage(absolute_image_path)
+                if image.isNull():
                     raise ValueError(f"Failed to load image: {absolute_image_path}")
 
-                # Escalar la imagen y mostrarla en el QLabel
+                # Crear una nueva imagen sin metadatos
+                clean_image = QImage(
+                    image.width(), image.height(), QImage.Format_ARGB32
+                )
+                clean_image.fill(Qt.transparent)
+
+                # Pintar la imagen original en la nueva
+                painter = QPainter(clean_image)
+                painter.setRenderHint(QPainter.Antialiasing)
+                painter.setRenderHint(QPainter.SmoothPixmapTransform)
+                painter.drawImage(0, 0, image)
+                painter.end()
+
+                # Convertir a QPixmap y escalar
+                pixmap = QPixmap.fromImage(clean_image)
                 scaled_pixmap = pixmap.scaled(
                     600, 750, Qt.KeepAspectRatio, Qt.SmoothTransformation
                 )
+
+                # Mostrar la imagen procesada
                 self.qcpc_image_label.setPixmap(scaled_pixmap)
 
             except Exception as e:
@@ -544,4 +563,4 @@ class qcpc_list(QWidget):
             )
         else:
             self.display_message("No valid image paths to display", "warning")
-            self.qcpc_image_label.clear()  # Limpiar la etiqueta de imagen si no hay imágenes
+            self.qcpc_image_label.clear()

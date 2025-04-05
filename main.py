@@ -1,4 +1,14 @@
+import os
 import sys
+import warnings
+from contextlib import redirect_stderr
+from io import StringIO
+
+# Suppress all warnings before importing Qt
+warnings.filterwarnings("ignore")
+os.environ["QT_LOGGING_RULES"] = "*.debug=false;qt.qpa.*=false"
+
+# Import Qt after warning suppression
 from frames.menu import *
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import QFile, QIODevice
@@ -113,28 +123,55 @@ class MiApp(QtWidgets.QMainWindow):
 
 
 if __name__ == "__main__":
-    app = QtWidgets.QApplication(sys.argv + ["--no-sandbox"])
-    font_id = QFontDatabase.addApplicationFont("./Assets/fonts/amstrad_cpc464.ttf")
-    app.setWindowIcon(QtGui.QIcon("./Assets/images/logo.png"))
-    if font_id != -1:
-        font_families = QFontDatabase.applicationFontFamilies(font_id)
-        if font_families:
-            font = QtGui.QFont(font_families[0], 10)
-            app.setFont(font)  # Aplicar la fuente a la aplicación
-    else:
-        print("Error loading font")
+    # Redirect stderr to StringIO to capture Qt warnings
+    stderr_redirect = StringIO()
 
-    file_path = "./qss/style.qss"
-    qss_file = QFile(file_path)
+    try:
+        with redirect_stderr(stderr_redirect):
+            # Create Qt application with debug output disabled
+            QtCore.qInstallMessageHandler(lambda *args: None)
+            app = QtWidgets.QApplication(sys.argv + ["--no-sandbox"])
 
-    if qss_file.open(QIODevice.OpenModeFlag.ReadOnly | QIODevice.OpenModeFlag.Text):
-        qss_content = qss_file.readAll()
+            # Disable Qt debug output
+            app.setApplicationName("QCPC")
+            QtCore.QLoggingCategory.setFilterRules("*.debug=false\nqt.*=false")
 
-        app.setStyleSheet(str(qss_content, "utf-8"))
+            # ...existing font loading code...
+            # Cargar y verificar la fuente
+            font_path = "./Assets/fonts/amstrad_cpc464.ttf"
+            if not os.path.exists(font_path):
+                print(f"Error: Font file not found at {font_path}")
+                sys.exit(1)
 
-        qss_file.close()
-    else:
-        print("Failed to open QSS file.")
-    mi_app = MiApp()
-    mi_app.show()
-    sys.exit(app.exec_())
+            font_id = QFontDatabase.addApplicationFont(font_path)
+            if font_id != -1:
+                font_families = QFontDatabase.applicationFontFamilies(font_id)
+                if font_families:
+                    default_font = QFont(font_families[0], 10)
+                    app.setFont(default_font)
+                else:
+                    print("Error: No font families found in the font file")
+            else:
+                print("Error: Failed to load font")
+
+            app.setWindowIcon(QtGui.QIcon("./Assets/images/logo.png"))
+
+            # ...existing QSS loading code...
+            file_path = "./qss/style.qss"
+            qss_file = QFile(file_path)
+
+            if qss_file.open(
+                QIODevice.OpenModeFlag.ReadOnly | QIODevice.OpenModeFlag.Text
+            ):
+                qss_content = qss_file.readAll()
+                app.setStyleSheet(str(qss_content, "utf-8"))
+                qss_file.close()
+
+            # Create and show main window
+            mi_app = MiApp()
+            mi_app.show()
+            sys.exit(app.exec_())
+
+    except Exception as e:
+        print(f"Error: {e}")
+        sys.exit(1)

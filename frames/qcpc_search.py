@@ -651,15 +651,13 @@ class qcpc_search(QWidget):
         # Insertar los datos del juego en la tabla juegos
         c.execute(
             """INSERT INTO juegos 
-            (id, game_title, release_date, platform, region_id, country_id, developer_id, front_boxart_path, back_boxart_path) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (id, game_title, release_date, platform, developer_id, front_boxart_path, back_boxart_path) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (
                 game_id,
                 game_data["game_title"],
                 game_data["release_date"],
                 game_data["platform"],
-                game_data["region_id"],
-                game_data["country_id"],
                 developer_id,
                 relative_front_boxart_path,
                 relative_back_boxart_path,

@@ -132,6 +132,7 @@ class StackedWidgetFadeTransition(QWidget):
 
 
 class Ui_MainWindow(object):
+
     def setupUi(self, MainWindow):
         # Configuración básica
         MainWindow.setObjectName("MainWindow")
