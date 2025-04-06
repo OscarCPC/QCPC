@@ -736,6 +736,7 @@ class qcpc_form(QWidget):
         self.screenshot_input.clear()
         self.url_input.clear()
         self.comments_input.clear()
+        self.info_output.clear()
 
     def append_message(self, message, message_type="info"):
         """

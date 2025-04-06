@@ -259,6 +259,13 @@ QWidget#body_widget {
   background-attachment: fixed;
 }
 
+QFrame#body_widget {
+  background-image: url("./Assets/images/g.jpg");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-attachment: fixed;
+}
+
 QWidget#body_widget * {
   background-color: rgba(
     36,
@@ -267,7 +274,7 @@ QWidget#body_widget * {
     0.8
   ); /* Fondo en tono azul oscuro con transparencia */
   border-radius: 10px;
-  color: rgba(223, 0, 255, 255); /* Color de texto en tono magenta/neón */
+  /* color: rgba(223, 0, 255, 255);  Color de texto en tono magenta/neón */
   padding: 5px; /* Ajusta según sea necesario */
 }
 #qcpc_image_frame {
@@ -330,10 +337,62 @@ QFrame#qcpc_frame_container {
   background-attachment: fixed;
 }
 
-QFrame#qcpc_frame_container QLabel {
+QFrame#qcpc_search_frame_container {
+  background-color: rgba(16, 14, 25, 0.85);
+  border: 1px solid #c0db50;
+  border-radius: 10px;
+  padding: 10px;
+  box-shadow: 0 0 10px rgba(192, 219, 80, 0.3);
+}
+
+QFrame#qcpc_search_frame_container QLabel {
+  color: #c0db50;
+  font-size: 12px;
+  font-weight: bold;
+  background-color: transparent;
+  border-bottom: 1px solid rgba(192, 219, 80, 0.2);
+  padding: 8px 15px;
+  margin: 2px 0;
+}
+
+QFrame#qcpc_search_frame_container QLabel:hover {
+  color: #d33af1;
+  border-bottom: 1px solid rgba(211, 58, 241, 0.4);
+  background-color: rgba(#00026b, 0.8);
+}
+
+QFrame#qcpc_search_frame_container QListWidget {
+  background-color: rgba(#00026b, 0.8);
+  border: 1px solid rgba(192, 219, 80, 0.3);
+  border-radius: 5px;
+  padding: 5px;
+}
+
+QFrame#qcpc_search_frame_container QListWidget::item {
   color: yellow;
-  font-size: 10px;
-  background-color: rgba(36, 47, 81, 0.8);
+  padding: 8px;
+  margin: 2px 0;
+  border-bottom: 1px solid rgba(#00026b, 0.8);
+}
+
+QFrame#qcpc_search_frame_container QListWidget::item:selected {
+  background: qlineargradient(
+    spread: pad,
+    x1: 0,
+    y1: 0,
+    x2: 1,
+    y2: 0,
+    stop: 0 rgba(192, 219, 80, 0.2),
+    stop: 1 rgba(211, 58, 241, 0.2)
+  );
+  border: 1px solid #d33af1;
+  border-radius: 3px;
+  color: #d33af1;
+}
+
+QFrame#qcpc_search_frame_container QListWidget::item:hover {
+  background-color: rgba(#00026b, 0.8);
+  border-bottom: 1px solid rgba(192, 219, 80, 0.3);
 }
 
 QTableView#qcpc_result_table {
@@ -393,7 +452,7 @@ qcpc_form QLabel {
 }
 
 qcpc_form QLineEdit {
-  background-color: rgba(36, 47, 81, 0.8);
+  background-color: rgba(#00026b, 0.8);
   border-radius: 5px;
   color: yellow;
 }
@@ -424,4 +483,74 @@ QComboBox QAbstractItemView {
   background-color: blue;
   border: 1px solid blue;
   selection-background-color: blueviolet;
+}
+
+//* Estilos específicos para qcpc_search */
+#searchFrame {
+  background-color: rgba(0, 2, 107, 0.8);
+  border: 1px solid #c0db50;
+  border-radius: 10px;
+  margin: 5px;
+}
+
+#searchContainer {
+  background-color: transparent;
+}
+
+#qcpc_input_text {
+  background-color: rgba(0, 2, 107, 0.9);
+  border: 1px solid #c0db50;
+  border-radius: 17px;
+  padding: 5px 10px;
+  color: yellow;
+}
+
+QFrame#qcpc_search_frame_container {
+  background-color: rgba(0, 2, 107, 0.85);
+  border: 1px solid #c0db50;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+QFrame#qcpc_search_frame_container QLabel {
+  background-color: rgba(0, 2, 107, 0.7);
+  color: #c0db50;
+  font-size: 12px;
+  font-weight: bold;
+  border-bottom: 1px solid rgba(192, 219, 80, 0.2);
+  padding: 8px 15px;
+}
+
+QFrame#qcpc_search_frame_container QListWidget {
+  background-color: rgba(0, 2, 107, 0.8);
+  border: 1px solid rgba(192, 219, 80, 0.3);
+  border-radius: 5px;
+}
+
+QFrame#qcpc_search_frame_container QListWidget::item:hover {
+  background-color: rgba(0, 2, 107, 0.9);
+}
+
+#qcpc_image_frame {
+  background-color: rgba(0, 2, 107, 0.85);
+  border: 1px solid #c0db50;
+  border-radius: 10px;
+}
+
+QScrollArea#image_scroll_area QScrollBar:vertical {
+  background-color: rgba(0, 2, 107, 0.6);
+}
+
+#qcpc_input_output_text {
+  background-color: rgba(0, 2, 107, 0.8);
+  border: 1px solid #c0db50;
+  border-radius: 5px;
+  max-height: 100px;
+}
+
+QSplitter::handle {
+  background-color: rgba(0, 2, 107, 0.9);
+  border: 1px solid #c0db50;
+  width: 10px;
+  margin: 0 5px;
 }

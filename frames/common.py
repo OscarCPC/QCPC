@@ -43,13 +43,20 @@ def delete_files(path_to_files, log):
     )
 
 
-def show_results(output_widget, text):
+def show_results(output_widget, *args):
     # Reactiva el widget de salida.
     output_widget.setReadOnly(False)
     # vacía el contenido que este tenga.
     output_widget.clear()
     # Inserta el texto generado
-    output_widget.insertPlainText(text)
+    try:
+        message = " ".join(str(arg) for arg in args)
+        output_widget.append(message)
+        output_widget.verticalScrollBar().setValue(
+            output_widget.verticalScrollBar().maximum()
+        )
+    except Exception as e:
+        print(f"Error mostrando resultados: {str(e)}")
     # Vuelve a deshabilitar el widgt de salida para evitar modificaciones accidentales
     output_widget.setReadOnly(True)
 

@@ -1,229 +1,226 @@
-from PyQt5.QtCore import *  # type: ignore
-from PyQt5.QtGui import *  # type: ignore
-from PyQt5.QtWidgets import *  # type: ignore
-import json
-import os
-import requests
+from contextlib import contextmanager
+from typing import Optional, Set
+from pathlib import Path
+import shutil
 import sqlite3
-from .common import *
-from .qcpc_form import *
+import requests
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
+import qtawesome as qta
+from .common import show_results
+from .qcpc_form import qcpc_form
+from .config.base_config import QCPCConfig
 
 
 class qcpc_search(QWidget):
-    config = load_config()
-    path = os.getcwd()
-
-    # BDD
-    path_to_db = os.path.join(path, "db", "qcpc.db")
-
-    # Descargas
-    path_to_download = os.path.join(path, config["paths"]["path_to_download"])
-    boxart_path = os.path.join(path, config["paths"]["boxart_path"])
-    screenshot_path = os.path.join(path, config["paths"]["screenshot_path"])
-
-    # Guardar descargas
-    path_to_image = os.path.join(path, config["paths"]["path_to_image"])
-    boxart_path_images = os.path.join(path, config["paths"]["boxart_path_images"])
-    screenshot_path_images = os.path.join(
-        path, config["paths"]["screenshot_path_images"]
-    )
-
     def __init__(self, parent=None):
         super(qcpc_search, self).__init__(parent)
+        self.project_root = Path(__file__).parent.parent.absolute()
+        self.config = QCPCConfig.from_json()
         self.setupUi()
 
+    def test_path(self):
+        """Verificar y crear directorios necesarios"""
+        paths = [
+            self.config.get_path("path_to_download"),
+            self.config.get_path("boxart_path"),
+            self.config.get_path("screenshot_path"),
+            self.config.get_path("path_to_image"),
+            self.config.get_path("boxart_path_images"),
+            self.config.get_path("screenshot_path_images"),
+        ]
+        for path in paths:
+            if not path.exists():
+                path.mkdir(parents=True)
+
+    def _get_absolute_path(self, path: Path) -> Path:
+        """Convierte una ruta relativa en absoluta"""
+        if path.is_absolute():
+            return path
+        return self.project_root / path
+
+    def get_api_key(self):
+        """Obtener API key de la configuración"""
+        return self.config.api_key
+
     def setupUi(self):
+        # Frame contenedor principal que recibirá la imagen de fondo
+        self.main_container = QFrame(self)
+        self.main_container.setObjectName("body_widget")
 
+        # Layout principal que contiene el frame principal
+        container_layout = QVBoxLayout(self)
+        container_layout.setContentsMargins(0, 0, 0, 0)
+        container_layout.setSpacing(0)
+        container_layout.addWidget(self.main_container)
+
+        # Layout para el contenido dentro del frame principal
+        main_layout = QVBoxLayout(self.main_container)
+        main_layout.setSpacing(10)
+        main_layout.setContentsMargins(15, 15, 15, 15)
+
+        # Configuración inicial del widget
         self.resize(1100, 950)
-
         self.setMinimumSize(QSize(1100, 950))
-        self.formLayout_2 = QFormLayout(self)
-        self.formLayout_2.setObjectName("formLayout_2")
-        self.qcpc_frame_container = QFrame(self)
-        self.qcpc_frame_container.setObjectName("qcpc_frame_container")
 
-        self.qcpc_frame_container.setFrameShape(QFrame.StyledPanel)
-        self.qcpc_frame_container.setFrameShadow(QFrame.Raised)
-        self.gridLayout_2 = QGridLayout(self.qcpc_frame_container)
-        self.gridLayout_2.setObjectName("gridLayout_2")
-        self.qcpc_input_frame = QFrame(self.qcpc_frame_container)
-        self.qcpc_input_frame.setObjectName("qcpc_input_frame")
+        # Header con búsqueda
+        search_frame = QFrame()
+        search_frame.setObjectName("searchFrame")
+        search_frame.setMaximumHeight(80)  # Limitar la altura del frame de búsqueda
+        search_layout = QHBoxLayout(search_frame)
+        search_layout.setContentsMargins(10, 5, 10, 5)  # Reducir márgenes
 
-        self.qcpc_input_frame.setLayoutDirection(Qt.RightToLeft)
-        self.qcpc_input_frame.setFrameShape(QFrame.StyledPanel)
-        self.qcpc_input_frame.setFrameShadow(QFrame.Raised)
-        self.qcpc_input_layout = QFormLayout(self.qcpc_input_frame)
-        self.qcpc_input_layout.setObjectName("qcpc_input_layout")
-        self.qcpc_input_layout.setFieldGrowthPolicy(QFormLayout.ExpandingFieldsGrow)
-        self.qcpc_input_layout.setRowWrapPolicy(QFormLayout.WrapLongRows)
-        self.qcpc_input_layout.setLabelAlignment(Qt.AlignCenter)
-        self.qcpc_input_label = QLabel(self.qcpc_input_frame)
-        self.qcpc_input_label.setObjectName("qcpc_input_label")
+        # Campo de búsqueda con icono
+        search_container = QFrame()
+        search_container.setObjectName("searchContainer")
+        search_container_layout = QHBoxLayout(search_container)
+        search_container_layout.setContentsMargins(5, 0, 5, 0)
 
-        self.qcpc_input_label.setMinimumSize(QSize(250, 0))
-        self.qcpc_input_label.setMaximumSize(QSize(16777215, 16777211))
-        self.qcpc_input_label.setAlignment(Qt.AlignCenter)
+        search_icon = QLabel()
+        search_icon.setPixmap(qta.icon("fa5s.search", color="yellow").pixmap(16, 16))
 
-        self.qcpc_input_layout.setWidget(
-            0, QFormLayout.FieldRole, self.qcpc_input_label
-        )
-
-        self.qcpc_input_text = QPlainTextEdit(self.qcpc_input_frame)
+        self.qcpc_input_text = QLineEdit()
+        self.qcpc_input_text.setPlaceholderText("Buscar juego...")
+        self.qcpc_input_text.setMinimumHeight(30)  # Reducir altura mínima
+        self.qcpc_input_text.setMaximumHeight(30)  # Asegurar altura máxima
         self.qcpc_input_text.setObjectName("qcpc_input_text")
-        self.qcpc_input_text.setMinimumSize(QSize(275, 30))
-        self.qcpc_input_text.setMaximumSize(QSize(16777215, 30))
         self.qcpc_input_text.installEventFilter(self)
 
-        self.qcpc_input_layout.setWidget(1, QFormLayout.FieldRole, self.qcpc_input_text)
+        search_container_layout.addWidget(search_icon)
+        search_container_layout.addWidget(self.qcpc_input_text)
 
-        self.qcpc_input_output_text = QTextEdit(self.qcpc_input_frame)
-        self.qcpc_input_output_text.setObjectName("qcpc_input_output_text")
-        self.qcpc_input_output_text.setReadOnly(True)
+        # Botones de acción
+        buttons_container = QFrame()
+        buttons_layout = QHBoxLayout(buttons_container)
+        buttons_layout.setSpacing(10)
 
-        # Agregar el formulario editable al layout
+        self.qcpc_input_search = QPushButton("Buscar")
+        self.qcpc_input_frame_clean = QPushButton("Limpiar")
 
-        self.qcpc_input_layout.setWidget(
-            5, QFormLayout.FieldRole, self.qcpc_input_output_text
-        )
+        for button in [self.qcpc_input_search, self.qcpc_input_frame_clean]:
+            button.setMinimumHeight(35)
+            button.setCursor(Qt.PointingHandCursor)
 
-        self.qcpc_inner_input_layout = QHBoxLayout()
-        self.qcpc_inner_input_layout.setObjectName("qcpc_inner_input_layout")
-        self.qcpc_input_frame_save = QPushButton(self.qcpc_input_frame)
-        self.qcpc_input_frame_save.setObjectName("qcpc_input_frame_save")
-        self.qcpc_input_frame_save.setMinimumSize(QSize(80, 30))
-        self.qcpc_input_frame_save.setLayoutDirection(Qt.RightToLeft)
+        buttons_layout.addWidget(self.qcpc_input_search)
+        buttons_layout.addWidget(self.qcpc_input_frame_clean)
 
-        self.qcpc_input_frame_edit = QPushButton(self.qcpc_input_frame)
-        self.qcpc_input_frame_edit.setObjectName("qcpc_info_frame_edit")
-        self.qcpc_input_frame_edit.setMinimumSize(QSize(80, 30))
-        self.qcpc_input_frame_edit.setLayoutDirection(Qt.RightToLeft)
+        search_layout.addWidget(search_container, 1)
+        search_layout.addWidget(buttons_container)
 
-        self.qcpc_inner_input_layout.addWidget(self.qcpc_input_frame_save)
-        self.qcpc_inner_input_layout.addWidget(self.qcpc_input_frame_edit)
+        # Contenedor principal split
+        content_splitter = QSplitter(Qt.Horizontal)
 
-        self.qcpc_input_frame_delete = QPushButton(self.qcpc_input_frame)
-        self.qcpc_input_frame_delete.setObjectName("qcpc_input_frame_delete")
+        # Panel izquierdo: Resultados y acciones
+        left_panel = QFrame()
+        left_panel.setObjectName("qcpc_search_frame_container")
+        left_layout = QVBoxLayout(left_panel)
 
-        self.qcpc_inner_input_layout.addWidget(self.qcpc_input_frame_delete)
+        # Etiqueta de resultados
+        self.qcpc_result_label = QLabel("Resultados")
+        self.qcpc_result_label.setAlignment(Qt.AlignCenter)
+        left_layout.addWidget(self.qcpc_result_label)
 
-        self.qcpc_input_search = QPushButton(self.qcpc_input_frame)
-        self.qcpc_input_search.setObjectName("qcpc_input_search")
-        self.qcpc_input_search.setMinimumSize(QSize(80, 30))
-        self.qcpc_input_search.setMaximumSize(QSize(80, 30))
-        self.qcpc_input_search.setLayoutDirection(Qt.LeftToRight)
-        # Establecer el botón como el botón predeterminado para que se active con Enter
-        self.qcpc_input_search.setDefault(True)
-        # Establecer el acceso directo a Enter
-        self.qcpc_input_search.setShortcut(Qt.Key_Return)
-
-        self.qcpc_inner_input_layout.addWidget(self.qcpc_input_search)
-
-        self.qcpc_input_layout.setLayout(
-            4, QFormLayout.SpanningRole, self.qcpc_inner_input_layout
-        )
-
-        self.qcpc_result_frame = QFrame(self.qcpc_frame_container)
-        self.qcpc_result_frame.setObjectName("qcpc_result_frame")
-
-        self.qcpc_result_frame.setFrameShape(QFrame.StyledPanel)
-        self.qcpc_result_frame.setFrameShadow(QFrame.Raised)
-        self.verticalLayout = QVBoxLayout(self.qcpc_result_frame)
-        self.verticalLayout.setObjectName("verticalLayout")
-        self.qcpc_result_table = QListWidget(self.qcpc_result_frame)
+        # Lista de resultados
+        self.qcpc_result_table = QListWidget()
         self.qcpc_result_table.setObjectName("qcpc_result_table")
 
-        self.verticalLayout.addWidget(self.qcpc_result_table)
+        # Panel de acciones
+        actions_panel = QFrame()
+        actions_layout = QHBoxLayout(actions_panel)
 
-        self.qcpc_result_label = QLabel(self.qcpc_result_frame)
-        self.qcpc_result_label.setObjectName("qcpc_result_label")
-        self.qcpc_result_label.setAlignment(Qt.AlignCenter)
+        self.qcpc_input_frame_save = QPushButton("Guardar")
+        self.qcpc_input_frame_edit = QPushButton("Editar")
+        self.qcpc_input_frame_delete = QPushButton("Eliminar")
 
-        self.verticalLayout.addWidget(self.qcpc_result_label)
+        for button in [
+            self.qcpc_input_frame_save,
+            self.qcpc_input_frame_edit,
+            self.qcpc_input_frame_delete,
+        ]:
+            actions_layout.addWidget(button)
 
-        self.gridLayout_2.addWidget(self.qcpc_result_frame, 1, 0, 1, 1)
+        left_layout.addWidget(self.qcpc_result_table)
+        left_layout.addWidget(actions_panel)
 
-        self.formLayout_2.setWidget(0, QFormLayout.LabelRole, self.qcpc_frame_container)
-
-        self.qcpc_image_frame = QFrame(self)
+        # Panel derecho: Visualización de imagen
+        self.qcpc_image_frame = QFrame()
         self.qcpc_image_frame.setObjectName("qcpc_image_frame")
 
-        self.qcpc_image_frame.setMinimumSize(QSize(600, 900))
-        self.qcpc_image_frame.setMaximumSize(QSize(16777215, 16777215))
+        # Crear scroll area para la imagen
+        image_scroll = QScrollArea()
+        image_scroll.setWidgetResizable(True)
+        image_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        image_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        image_scroll.setObjectName("image_scroll_area")
 
-        self.qcpc_image_frame.setFrameShape(QFrame.StyledPanel)
-        self.qcpc_image_frame.setFrameShadow(QFrame.Raised)
-        self.horizontalLayout = QHBoxLayout(self.qcpc_image_frame)
-        self.horizontalLayout.setObjectName("horizontalLayout")
-        self.horizontalLayout.setContentsMargins(8, 8, 8, 8)
-        self.qcpc_image_label = QLabel(self.qcpc_image_frame)
+        # Container para la imagen dentro del scroll area
+        image_container = QWidget()
+        image_layout = QVBoxLayout(image_container)
+        image_layout.setContentsMargins(8, 8, 8, 8)
+        image_layout.setAlignment(Qt.AlignCenter)
+
+        self.qcpc_image_label = QLabel()
         self.qcpc_image_label.setObjectName("qcpc_image_label")
         self.qcpc_image_label.setMinimumSize(QSize(600, 900))
         self.qcpc_image_label.setAlignment(Qt.AlignCenter)
 
-        # self.qcpc_image_frame.setStyleSheet(u"background-color: rgba(170, 0, 0,0);")
+        image_layout.addWidget(self.qcpc_image_label)
+        image_scroll.setWidget(image_container)
 
-        # self.horizontalLayout.addWidget(self.qcpc_image_label)
-        self.set_grid_layout()
-        self.retranslateUi(self)
+        # Layout principal del frame de imagen
+        main_image_layout = QVBoxLayout(self.qcpc_image_frame)
+        main_image_layout.setContentsMargins(0, 0, 0, 0)
+        main_image_layout.addWidget(image_scroll)
+
+        # Ajustar el splitter
+        content_splitter.addWidget(left_panel)
+        content_splitter.addWidget(self.qcpc_image_frame)
+        content_splitter.setStretchFactor(0, 40)
+        content_splitter.setStretchFactor(1, 60)
+
+        # Añadir espacio entre los paneles
+        content_splitter.setHandleWidth(10)
+
+        # Área de mensajes/output
+        self.qcpc_input_output_text = QTextEdit()
+        self.qcpc_input_output_text.setObjectName("qcpc_input_output_text")
+        self.qcpc_input_output_text.setMaximumHeight(100)
+
+        # Añadir todo al layout principal
+        main_layout.addWidget(search_frame)
+        main_layout.addWidget(content_splitter)
+        main_layout.addWidget(self.qcpc_input_output_text)
+
+        # Verificar y crear directorios necesarios
         self.test_path()
+
+        # Configurar conexiones
         self.setup_connections()
+
+        # Traducir textos
+        self.retranslateUi(self)
 
         QMetaObject.connectSlotsByName(self)
 
-    # setupUi
-
-    def set_grid_layout(self):
-        # self.gridLayout_2.addWidget(self.qcpc_input_frame, 0, 0, 1, 1)
-        self.gridLayout_2.addWidget(
-            self.qcpc_input_frame, 0, 0, 1, 1
-        )  # Colocar en la primera columna y primera fila
-        self.gridLayout_2.addWidget(
-            self.qcpc_image_frame, 0, 1, 2, 1
-        )  # Colocar en la segunda columna y primera fila, ocupando 2 filas de altura
-        self.gridLayout_2.addWidget(
-            self.qcpc_result_frame, 1, 0, 1, 1
-        )  # Colocar en la primera columna y segunda fila
-
-    def create_editable_form(self):
-        # Obtener el elemento seleccionado en la tabla de resultados
-        selected_item = self.qcpc_result_table.currentItem()
-
-        # Verificar si hay un juego seleccionado
-        if selected_item is None:
-            show_results(
-                self.qcpc_input_output_text, "No hay ningún juego seleccionado."
-            )
-            return
-
-        # Obtener los datos del juego seleccionado
-        game_data = selected_item.data(Qt.UserRole)
-
-        # Crear una instancia de Qcpc_form y pasar los datos del juego
-        self.edit_form = qcpc_form()
-        self.edit_form.is_editing = True  # Indicar que estamos en modo edición
-        self.edit_form.record_id = game_data["game_id"]  # Pasar el ID del juego
-        self.edit_form.load_data(game_data)  # Cargar los datos en el formulario
-
-        # Mostrar el formulario
-        self.edit_form.show()
-
-    def update_image(self, game_id):
-        # Obtener el tamaño actualizado del QLabel
-        label_width = self.qcpc_image_label.width()
-        label_height = self.qcpc_image_label.height()
-
-        front_boxart_path = os.path.join(
-            self.path, "files", "downloads", "boxart", f"{game_id}_front_boxart.jpg"
-        )
-
-        if os.path.exists(front_boxart_path):
-            self.show_image(front_boxart_path, label_width, label_height)
+    @contextmanager
+    def get_db_connection(self):
+        """Context manager para conexiones a BD"""
+        conn = None
+        try:
+            conn = sqlite3.connect(self.config.db_path)
+            yield conn
+        finally:
+            if conn:
+                conn.close()
 
     def clear_editable_form(self):
-        # Verificar si el formulario editable ya existe
         if hasattr(self, "qcpc_form_editable_frame") and self.qcpc_form_editable_frame:
-            # Remover el widget del layout
-            self.gridLayout_2.removeWidget(self.qcpc_form_editable_frame)
+            # Obtener el layout principal
+            main_layout = self.layout()
+
+            # Remover el widget del layout principal
+            main_layout.removeWidget(self.qcpc_form_editable_frame)
 
             # Eliminar todos los widgets dentro del formulario editable
             for i in reversed(range(self.qcpc_form_editable_layout.count())):
@@ -234,6 +231,19 @@ class qcpc_search(QWidget):
             # Eliminar el marco del formulario editable
             self.qcpc_form_editable_frame.deleteLater()
             self.qcpc_form_editable_frame = None
+
+    def update_image(self, game_id: int):
+        """Actualiza la imagen mostrada para un juego específico"""
+        # Obtener el tamaño actualizado del QLabel
+        label_width = self.qcpc_image_label.width()
+        label_height = self.qcpc_image_label.height()
+
+        front_boxart_path = (
+            self.config.get_path("boxart_path") / f"{game_id}_front_boxart.jpg"
+        )
+
+        if front_boxart_path.exists():
+            self.show_image(str(front_boxart_path), label_width, label_height)
 
     def add_action_buttons(self):
         # Crear botones y añadirlos al QTextEdit
@@ -264,15 +274,53 @@ class qcpc_search(QWidget):
         self.edit_button.clicked.connect(self.edit_data)
         self.save_button.clicked.connect(self.save_data)
 
+    def create_editable_form(self):
+        """Crea y muestra el formulario de edición"""
+        try:
+            # Obtener el elemento seleccionado
+            selected_item = self.qcpc_result_table.currentItem()
+            if selected_item is None:
+                show_results(
+                    self.qcpc_input_output_text, "No hay ningún juego seleccionado."
+                )
+                return
+
+            # Obtener y validar datos del juego
+            game_data = selected_item.data(Qt.UserRole)
+            if not game_data or "game_id" not in game_data:
+                show_results(
+                    self.qcpc_input_output_text,
+                    "Datos del juego inválidos o incompletos.",
+                )
+                return
+
+            # Crear y configurar formulario
+            self.edit_form = qcpc_form()
+            self.edit_form.is_editing = True
+            self.edit_form.record_id = game_data["game_id"]
+
+            # Cargar datos y mostrar
+            if self.edit_form.load_data(game_data):
+                self.edit_form.setWindowModality(Qt.ApplicationModal)
+                self.edit_form.resize(900, 600)  # Alterna
+                self.edit_form.show()
+            else:
+                show_results(
+                    self.qcpc_input_output_text,
+                    "Error cargando datos en el formulario.",
+                )
+
+        except Exception as e:
+            show_results(
+                self.qcpc_input_output_text, f"Error creando formulario: {str(e)}"
+            )
+
     def retranslateUi(self, qcpc_search):
         qcpc_search.setWindowTitle(
             QCoreApplication.translate("qcpc_search", "Form", None)
         )
         self.qcpc_result_label.setText(
             QCoreApplication.translate("qcpc_search", "Resultados", None)
-        )
-        self.qcpc_input_label.setText(
-            QCoreApplication.translate("qcpc_search", "Titulo a buscar", None)
         )
         self.qcpc_input_frame_save.setText(
             QCoreApplication.translate("qcpc_search", "Guardar Selecci\u00f3n", None)
@@ -286,130 +334,143 @@ class qcpc_search(QWidget):
         self.qcpc_input_search.setText(
             QCoreApplication.translate("qcpc_search", "Buscar", None)
         )
+        self.qcpc_input_frame_clean.setText(
+            QCoreApplication.translate("qcpc_search", "Limpiar imágenes", None)
+        )
 
     # retranslateUi
 
     def setup_connections(self):
+        """Configura las conexiones de señales y slots"""
+        # Búsqueda
         self.qcpc_input_search.clicked.connect(self.get_game)
+
+        # Visualización
         self.qcpc_result_table.itemClicked.connect(self.show_game_image)
-        self.qcpc_input_frame_delete.clicked.connect(
-            lambda: self.qcpc_input_text.clear()
-        )
+
+        # Gestión
         self.qcpc_input_frame_save.clicked.connect(self.guardar_seleccion)
         self.qcpc_input_frame_edit.clicked.connect(self.create_editable_form)
 
-    def eventFilter(self, source, event):
-        if source is self.qcpc_input_text and event.type() == QEvent.KeyPress:
-            if event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
-                self.qcpc_input_search.click()  # Simular clic en el botón
-            elif (
-                event.key() == Qt.Key_Escape
-            ):  # Si se presiona Escape, limpiar el texto
-                self.qcpc_input_text.clear()
-        else:
-            # Llamar a la implementación original del evento para mantener el comportamiento predeterminado
-            return super().eventFilter(source, event)
+        # Limpieza
+        self.qcpc_input_frame_delete.clicked.connect(self.clear_search)
+        self.qcpc_input_frame_clean.clicked.connect(self.clean_unused_images)
 
-        return False
+    def clear_search(self):
+        """Limpia todos los elementos de la interfaz"""
+        self.qcpc_input_text.clear()
+        self.qcpc_result_table.clear()
+        self.qcpc_image_label.clear()
+        self.clear_editable_form()
+        show_results(self.qcpc_input_output_text, "Búsqueda limpiada")
 
-    def test_path(self):
-        paths = [
-            self.path_to_download,
-            self.boxart_path,
-            self.screenshot_path,
-            self.path_to_image,
-            self.boxart_path_images,
-            self.screenshot_path_images,
-        ]
-        for path in paths:
-            if not os.path.exists(path):
-                os.makedirs(path)
+    def eventFilter(self, source: QObject, event: QEvent) -> bool:
+        """Maneja eventos personalizados"""
+        if source is self.qcpc_input_text:
+            if event.type() == QEvent.KeyPress:
+                key = event.key()
+                if key in (Qt.Key_Return, Qt.Key_Enter):
+                    self.qcpc_input_search.click()
+                    return True
+                elif key == Qt.Key_Escape:
+                    self.clear_search()
+                    return True
 
-    def get_api_key(self):
-        path = os.getcwd()
-        path_to_json = os.path.join(path, "frames", "config", "config.json")
-        with open(path_to_json, "r") as archivo_config:
-            data = json.load(archivo_config)
-            key = data["api_key"]
-        return key
+        return super().eventFilter(source, event)
 
     def get_game(self):
+        search_text = self.qcpc_input_text.text().strip()
+
+        if not search_text:
+            show_results(
+                self.qcpc_input_output_text, "Por favor ingrese un texto para buscar"
+            )
+            return
+
         self.clear_editable_form()
-        self.set_grid_layout()
         url_base = "https://api.thegamesdb.net/v1/Games/ByGameName"
         api_key = self.get_api_key()
 
         params = {
             "apikey": api_key,
-            "name": self.qcpc_input_text.toPlainText().strip(),
+            "name": search_text,
             "filter[platform]": "4914",
         }
 
-        request = requests.get(url_base, params=params)
+        try:
+            request = requests.get(url_base, params=params)
+            request.raise_for_status()
 
-        if request.status_code == 200:
             data = request.json()
-            self.qcpc_result_table.clear()  # Clear existing items
+            self.qcpc_result_table.clear()
+
             if "data" in data and "games" in data["data"] and data["data"]["games"]:
                 for game in data["data"]["games"]:
-                    game_id = game["id"]
-                    game_title = game["game_title"]
-                    release_date = game["release_date"][:4]  # Extraer solo el año
-                    platform = game["platform"]
-                    region_id = game["region_id"]
-                    country_id = game["country_id"]
-                    developer_id = developer_id = (
-                        game["developers"][0] if game["developers"] else None
-                    )  # Tomar el primer valor de la lista de desarrolladores si existe
+                    try:
+                        game_data = {
+                            "game_id": game.get("id"),
+                            "game_title": game.get("game_title", "Sin título"),
+                            "release_date": (
+                                game.get("release_date", "")[:4]
+                                if game.get("release_date")
+                                else "????"
+                            ),
+                            "platform": game.get("platform"),
+                            "region_id": game.get("region_id"),
+                            "country_id": game.get("country_id"),
+                            "developer_id": (
+                                game.get("developers", [None])[0]
+                                if game.get("developers")
+                                else None
+                            ),
+                        }
 
-                    developer_name = self.get_developer_name(developer_id)
+                        # Obtener el nombre del desarrollador de forma segura
+                        developer_name = self.get_developer_name(
+                            game_data["developer_id"]
+                        )
+                        game_data["developers"] = developer_name
 
-                    # Crear un diccionario con los datos del juego
-                    game_data = {
-                        "game_id": game_id,
-                        "game_title": game_title,
-                        "release_date": release_date,
-                        "platform": platform,
-                        "region_id": region_id,
-                        "country_id": country_id,
-                        "developer_id": developer_id,
-                        "developers": developer_name,
-                    }
+                        item = QListWidgetItem(
+                            f"{game_data['game_title']} - {game_data['release_date']} - Desarrollador: {developer_name}"
+                        )
+                        item.setData(Qt.UserRole, game_data)
+                        self.qcpc_result_table.addItem(item)
 
-                    item = QListWidgetItem(
-                        f"{game_title} - {release_date} -  Desarrollador: {developer_name}"
-                    )
-                    item.setData(Qt.UserRole, game_data)
-                    self.qcpc_result_table.addItem(item)
+                    except Exception as e:
+                        show_results(
+                            self.qcpc_input_output_text,
+                            f"Error procesando juego: {str(e)}",
+                        )
+                        continue  # Continuar con el siguiente juego si hay error
             else:
-                # Show message if no results were found
                 self.qcpc_result_table.addItem("No se han encontrado resultados")
 
-        else:
+        except requests.RequestException as e:
             show_results(
-                self.qcpc_input_output_text,
-                "Error en la petición REST:",
-                request.status_code,
+                self.qcpc_input_output_text, f"Error en la petición REST: {str(e)}"
             )
+        except Exception as e:
+            show_results(self.qcpc_input_output_text, f"Error inesperado: {str(e)}")
 
     def get_developer_name(self, developer_id):
-        # Conectar a la base de datos
+        """Obtiene el nombre del desarrollador desde la base de datos"""
         if developer_id is None:
             return "Desconocido"
-        conn = sqlite3.connect(self.path_to_db)
-        c = conn.cursor()
 
-        # Buscar el nombre del desarrollador por su ID en la tabla de desarrolladores
-        c.execute("SELECT name FROM developers WHERE id = ?", (developer_id,))
-        developer_name = c.fetchone()
-
-        # Cerrar la conexión
-        conn.close()
-
-        # Si se encontró el nombre del desarrollador, devolverlo, de lo contrario, devolver "Desconocido"
-        if developer_name:
-            return developer_name[0]
-        else:
+        try:
+            with self.get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT name FROM developers WHERE id = ?", (developer_id,)
+                )
+                developer_name = cursor.fetchone()
+                return developer_name[0] if developer_name else "Desconocido"
+        except sqlite3.Error as e:
+            show_results(
+                self.qcpc_input_output_text,
+                f"Error accediendo a la base de datos: {str(e)}",
+            )
             return "Desconocido"
 
     def show_game_image(self, item):
@@ -420,272 +481,435 @@ class qcpc_search(QWidget):
         self.get_game_image(game_id)
 
     def get_game_image(self, game_id):
-        # Definir las rutas de las imágenes
-        boxart_path_front = os.path.join(
-            self.path, "files", "downloads", "boxart", f"{game_id}_front_boxart.jpg"
-        )
-        boxart_path_back = os.path.join(
-            self.path, "files", "downloads", "boxart", f"{game_id}_back_boxart.jpg"
-        )
-        screenshot_dir = os.path.join(
-            self.path, "files", "downloads", "screenshot", f"{game_id}"
-        )
-
-        # Crear la carpeta de capturas de pantalla si no existe
-        if not os.path.exists(screenshot_dir):
-            os.makedirs(screenshot_dir)
-
-        # Comprobar si el boxart ya existe y mostrarlo si es el caso
-        if os.path.exists(boxart_path_front) and os.path.exists(boxart_path_back):
-            self.show_image(boxart_path_front)
-            show_results(self.qcpc_input_output_text, f"El boxart ya existe.")
-            return
-
-        # Comprobar si el boxart y la captura de pantalla ya existen
-        if (
-            os.path.exists(boxart_path_front)
-            and os.path.exists(boxart_path_back)
-            and os.path.exists(screenshot_dir)
-        ):
-            show_results(
-                self.qcpc_input_output_text,
-                f"El boxart y la captura de pantalla ya existen.",
+        """Obtiene y procesa las imágenes del juego (boxart y screenshots)"""
+        try:
+            # Definir las rutas de las imágenes
+            boxart_path_front = (
+                self.config.get_path("boxart_path") / f"{game_id}_front_boxart.jpg"
             )
-            return
+            boxart_path_back = (
+                self.config.get_path("boxart_path") / f"{game_id}_back_boxart.jpg"
+            )
+            screenshot_dir = self.config.get_path("screenshot_path") / str(game_id)
 
-        # Realizar la solicitud a la API para obtener las imágenes
-        url = f"https://api.thegamesdb.net/v1/Games/Images?apikey={self.get_api_key()}&games_id={game_id}"
-        request = requests.get(url)
+            # Crear la carpeta de capturas de pantalla si no existe
+            screenshot_dir.mkdir(parents=True, exist_ok=True)
 
-        if request.status_code == 200:
+            # Realizar la solicitud a la API primero
+            url = "https://api.thegamesdb.net/v1/Games/Images"
+            params = {"apikey": self.config.api_key, "games_id": game_id}
+
+            request = requests.get(url, params=params)
+            request.raise_for_status()
             data = request.json()
 
-            # Verificar que haya imágenes disponibles
             if data["data"]["count"] > 0:
                 images = data["data"]["images"].get(str(game_id), [])
                 base_url_thumb = data["data"]["base_url"]["thumb"]
+                base_url_full = data["data"]["base_url"]["original"]
 
-                # Procesar las imágenes recibidas
+                boxart_found = False
+                screenshots_found = False
+
+                # Procesar imágenes
                 for image in images:
                     image_type = image.get("type")
                     filename = image.get("filename")
 
                     if not image_type or not filename:
-                        continue  # Si faltan datos, pasar a la siguiente imagen
+                        continue
 
-                    # Procesar las imágenes de tipo 'boxart'
+                    # Procesar boxart
                     if image_type == "boxart":
                         image_side = image.get("side", "")
                         if image_side == "front":
-                            image_path = boxart_path_front
+                            target_path = boxart_path_front
                         elif image_side == "back":
-                            image_path = boxart_path_back
+                            target_path = boxart_path_back
                         else:
-                            continue  # Si no es ni 'front' ni 'back', continuar con la siguiente imagen
+                            continue
 
-                        # Descargar la imagen si no existe, de lo contrario, mostrarla
-                        if not os.path.exists(image_path):
-                            image_url = f"{base_url_thumb}{filename}"
-                            self.download_image(
-                                image_url, image_path, game_id, image_type, filename
-                            )
-                        else:
-                            self.show_image(image_path)
-
-                    # Procesar las capturas de pantalla (aquí se puede agregar más lógica si fuera necesario)
-                    elif image_type == "screenshot":
-                        screenshot_path = os.path.join(screenshot_dir, filename)
-                        if not os.path.exists(screenshot_path):
+                        # Siempre intentar descargar el boxart frontal
+                        if image_side == "front" or not target_path.exists():
                             image_url = f"{base_url_thumb}{filename}"
                             self.download_image(
                                 image_url,
-                                screenshot_path,
+                                str(target_path),
                                 game_id,
-                                image_type,
-                                filename,
+                                f"{image_side} boxart",
                             )
+                            if image_side == "front":
+                                self.show_image(str(target_path))
+                                boxart_found = True
 
+                    # Procesar screenshots
+                    elif image_type == "screenshot":
+                        screenshot_path = screenshot_dir / filename
+                        if not screenshot_path.exists():
+                            image_url = f"{base_url_full}{filename}"
+                            self.download_image(
+                                image_url, str(screenshot_path), game_id, "screenshot"
+                            )
+                            screenshots_found = True
+
+                # Mostrar mensaje según lo que se encontró
+                if boxart_found or screenshots_found:
+                    messages = []
+                    if boxart_found:
+                        messages.append("Boxart descargado")
+                    if screenshots_found:
+                        messages.append("Screenshots descargados")
+                    show_results(self.qcpc_input_output_text, " y ".join(messages))
+                else:
+                    # Si no se descargó nada nuevo pero existe el boxart, mostrarlo
+                    if boxart_path_front.exists():
+                        self.show_image(str(boxart_path_front))
+                        show_results(
+                            self.qcpc_input_output_text, "Usando boxart existente"
+                        )
+                    else:
+                        show_results(
+                            self.qcpc_input_output_text,
+                            "No se encontraron imágenes nuevas",
+                        )
             else:
                 show_results(
-                    self.qcpc_input_output_text, "No hay imágenes disponibles."
+                    self.qcpc_input_output_text,
+                    "No hay imágenes disponibles para este juego",
                 )
-        else:
+
+        except requests.RequestException as e:
+            show_results(
+                self.qcpc_input_output_text, f"Error en la petición REST: {str(e)}"
+            )
+        except Exception as e:
+            show_results(self.qcpc_input_output_text, f"Error inesperado: {str(e)}")
+
+    def download_image(
+        self, image_url: str, image_path: str, game_id: int, image_type: str
+    ):
+        """Descarga y guarda una imagen"""
+        try:
+            image_path = self._get_absolute_path(Path(image_path))
+            image_path.parent.mkdir(parents=True, exist_ok=True)
+
+            with requests.get(image_url, timeout=10, stream=True) as response:
+                response.raise_for_status()
+                total_size = int(response.headers.get("content-length", 0))
+
+                with open(image_path, "wb") as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        if chunk:
+                            f.write(chunk)
+
             show_results(
                 self.qcpc_input_output_text,
-                f"Error en la petición REST: {request.status_code}",
+                f"Imagen {image_type} descargada ({total_size/1024:.1f}KB)",
             )
 
-    def download_image(self, image_url, image_path, game_id, image_type, filename):
-        # Crear la carpeta de destino si no existe
-        os.makedirs(os.path.dirname(image_path), exist_ok=True)
-
-        response = requests.get(image_url)
-        if response.status_code == 200:
-            with open(image_path, "wb") as f:
-                f.write(response.content)
-            self.show_image(image_path)
+        except Exception as e:
             show_results(
-                self.qcpc_input_output_text,
-                f"Imagen guardada para el ID del juego {game_id} ({image_type}) en {image_path}",
+                self.qcpc_input_output_text, f"Error descargando imagen: {str(e)}"
             )
-        else:
+            raise
+
+    def show_image(
+        self, image_path: str, label_width: int = None, label_height: int = None
+    ):
+        """Muestra una imagen en el QLabel ajustándola al tamaño"""
+        try:
+            # Cargar la imagen
+            pixmap = QPixmap(image_path)
+            if pixmap.isNull():
+                raise ValueError("No se pudo cargar la imagen")
+
+            # Obtener dimensiones del label si no se proporcionan
+            if label_width is None:
+                label_width = self.qcpc_image_label.width()
+            if label_height is None:
+                label_height = self.qcpc_image_label.height()
+
+            # Escalar manteniendo proporción
+            scaled_pixmap = pixmap.scaled(
+                label_width, label_height, Qt.KeepAspectRatio, Qt.SmoothTransformation
+            )
+
+            # Mostrar imagen
+            self.qcpc_image_label.setPixmap(scaled_pixmap)
+            self.qcpc_image_label.setAlignment(Qt.AlignCenter)
+            self.qcpc_image_label.update()
+
+        except Exception as e:
             show_results(
-                self.qcpc_input_output_text,
-                f"Fallo al descargar la imagen {image_type} para el ID del juego {game_id}",
+                self.qcpc_input_output_text, f"Error mostrando imagen: {str(e)}"
             )
-
-    def show_image(self, image_path, label_width=None, label_height=None):
-        # Cargar la imagen en un QPixmap
-        pixmap = QPixmap(image_path)
-
-        # Obtener el tamaño del QLabel donde se mostrará la imagen si no se proporciona
-        if label_height is None and label_width is None:
-            label_width = self.qcpc_image_label.width()
-            label_height = self.qcpc_image_label.height()
-
-        # Escalar la imagen al tamaño del QLabel, manteniendo la proporción
-        scaled_pixmap = pixmap.scaled(
-            label_width, label_height, Qt.KeepAspectRatio, Qt.SmoothTransformation
-        )
-
-        # Mostrar la imagen escalada
-        self.qcpc_image_label.setPixmap(scaled_pixmap)
-        self.qcpc_image_label.setAlignment(
-            Qt.AlignCenter
-        )  # Centrar la imagen en el QLabel
-
-        # Forzar la actualización del QLabel para asegurar que la imagen se dibuje correctamente
-        self.qcpc_image_label.update()
 
     def guardar_seleccion(self):
-        # Obtener el elemento seleccionado en la tabla de resultados
+        """Guarda el juego seleccionado en la base de datos"""
+        # Obtener el elemento seleccionado
         selected_item = self.qcpc_result_table.currentItem()
-
-        # Verificar si hay un juego seleccionado
         if selected_item is None:
             show_results(
                 self.qcpc_input_output_text, "No hay ningún juego seleccionado."
             )
             return
 
-        # Obtener los datos del juego seleccionado
+        # Obtener datos del juego
         game_data = selected_item.data(Qt.UserRole)
-
-        # Obtener el ID del desarrollador del juego
-        developer_id = game_data.get("developer_id")
-
-        # Verificar si el juego tiene un desarrollador asociado
-        if developer_id is None:
-            # Asignar el ID 10861 al desarrollador si no tiene uno asociado
-            developer_id = 10861
         game_id = game_data["game_id"]
+        developer_id = game_data.get("developer_id", 10861)
 
-        # Definir las rutas de las imágenes
+        # Definir rutas de imágenes usando Path y asegurar que son absolutas
+        boxart_temp = self._get_absolute_path(self.config.get_path("boxart_path"))
+        boxart_final = self._get_absolute_path(
+            self.config.get_path("boxart_path_images")
+        )
+        screenshot_temp = self._get_absolute_path(
+            self.config.get_path("screenshot_path") / str(game_id)
+        )
+        screenshot_final = self._get_absolute_path(
+            self.config.get_path("screenshot_path_images")
+        )
+
+        # Verificar y preparar rutas
         front_boxart_path = None
         back_boxart_path = None
         screenshot_paths = []
 
-        # Verificar si existen las imágenes de portada frontal y trasera
-        if os.path.exists(
-            os.path.join(
-                self.path, "files", "downloads", "boxart", f"{game_id}_front_boxart.jpg"
-            )
-        ):
-            front_boxart_path = os.path.join(
-                self.path, "files", "downloads", "boxart", f"{game_id}_front_boxart.jpg"
-            )
-        if os.path.exists(
-            os.path.join(
-                self.path, "files", "downloads", "boxart", f"{game_id}_back_boxart.jpg"
-            )
-        ):
-            back_boxart_path = os.path.join(
-                self.path, "files", "downloads", "boxart", f"{game_id}_back_boxart.jpg"
-            )
+        # Comprobar boxarts
+        front_temp = boxart_temp / f"{game_id}_front_boxart.jpg"
+        back_temp = boxart_temp / f"{game_id}_back_boxart.jpg"
 
-        # Verificar si existen capturas de pantalla y agregarlas a la lista
-        screenshot_dir = os.path.join(
-            self.path, "files", "downloads", "screenshot", f"{game_id}", "screenshots"
-        )
-        if os.path.exists(screenshot_dir):
-            for file_name in os.listdir(screenshot_dir):
-                screenshot_paths.append(os.path.join(screenshot_dir, file_name))
+        if front_temp.exists():
+            front_boxart_path = front_temp
+        if back_temp.exists():
+            back_boxart_path = back_temp
 
-        # Conectar a la base de datos
-        conn = sqlite3.connect(self.path_to_db)
-        c = conn.cursor()
+        # Comprobar screenshots
+        if screenshot_temp.exists():
+            screenshot_paths.extend(screenshot_temp.glob("*.jpg"))
 
-        # Verificar si el game_id ya existe en la tabla juegos
-        c.execute("""SELECT id FROM juegos WHERE id = ?""", (game_id,))
-        existing_game = c.fetchone()
+        try:
+            with self.get_db_connection() as conn:
+                cursor = conn.cursor()
 
-        # Si ya existe un registro con el mismo game_id, mostrar un mensaje y salir de la función
-        if existing_game:
+                # Verificar si el juego ya existe
+                cursor.execute("SELECT id FROM juegos WHERE id = ?", (game_id,))
+                if cursor.fetchone():
+                    show_results(
+                        self.qcpc_input_output_text,
+                        f"El juego con ID {game_id} ya está en la base de datos.",
+                    )
+                    return
+
+                # Preparar las rutas relativas
+                relative_front = "null"
+                relative_back = "null"
+                screenshot_relatives = []
+
+                # Mover y registrar boxarts
+                if front_boxart_path:
+                    front_final = boxart_final / f"{game_id}_front_boxart.jpg"
+                    front_final.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(str(front_boxart_path), str(front_final))
+                    relative_front = str(front_final.relative_to(self.project_root))
+
+                if back_boxart_path:
+                    back_final = boxart_final / f"{game_id}_back_boxart.jpg"
+                    back_final.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(str(back_boxart_path), str(back_final))
+                    relative_back = str(back_final.relative_to(self.project_root))
+
+                # Insertar datos del juego
+                cursor.execute(
+                    """
+                    INSERT INTO juegos 
+                    (id, game_title, release_date, platform, developer_id, front_boxart_path, back_boxart_path) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                    (
+                        game_id,
+                        game_data["game_title"],
+                        game_data["release_date"],
+                        game_data["platform"],
+                        developer_id,
+                        relative_front,
+                        relative_back,
+                    ),
+                )
+
+                # Mover y registrar screenshots
+                for screenshot_path in screenshot_paths:
+                    screenshot_final_path = screenshot_final / screenshot_path.name
+                    screenshot_final_path.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(str(screenshot_path), str(screenshot_final_path))
+                    relative_screenshot = str(
+                        screenshot_final_path.relative_to(self.project_root)
+                    )
+                    screenshot_relatives.append(relative_screenshot)
+
+                # Si hay screenshots, insertarlos como una única entrada concatenada
+                if screenshot_relatives:
+                    screenshot_paths_str = ",".join(screenshot_relatives)
+                    cursor.execute(
+                        "INSERT INTO screenshots (game_id, screenshot_path) VALUES (?, ?)",
+                        (game_id, screenshot_paths_str),
+                    )
+
+                conn.commit()
+                show_results(
+                    self.qcpc_input_output_text,
+                    "Selección guardada correctamente en la base de datos.",
+                )
+
+                # Limpiar archivos temporales después de guardar exitosamente
+                self.clean_unused_images()
+
+        except Exception as e:
             show_results(
-                self.qcpc_input_output_text,
-                f"El juego con ID {game_id} ya está en la base de datos.",
+                self.qcpc_input_output_text, f"Error guardando la selección: {str(e)}"
             )
-            conn.close()
-            return
 
-        # Mover las imágenes de portada a la carpeta de imágenes y obtener las rutas relativas
-        if front_boxart_path:
-            new_front_boxart_path = os.path.join(
-                self.path, "files", "images", "boxart", f"{game_id}_front_boxart.jpg"
+    def clean_unused_images(self):
+        """Limpia imágenes temporales y no utilizadas"""
+        try:
+            # Limpiar carpetas temporales
+            temp_dirs = [
+                self.config.get_path("path_to_download"),
+                self.config.get_path("boxart_path"),
+                self.config.get_path("screenshot_path"),
+            ]
+            temp_deleted = self._clean_temp_directories(temp_dirs)
+            permanent_deleted = self._clean_permanent_images()
+            # Mostrar resumen
+            self._show_cleanup_summary(temp_deleted, permanent_deleted)
+        except Exception as e:
+            show_results(
+                self.qcpc_input_output_text, f"Error durante la limpieza: {str(e)}"
             )
-            shutil.move(front_boxart_path, new_front_boxart_path)
-            relative_front_boxart_path = os.path.relpath(
-                new_front_boxart_path, self.path
+
+    def _clean_temp_directories(self, directories):
+        """Limpia directorios temporales incluyendo subdirectorios"""
+        deleted_count = 0
+        for dir_path in directories:
+            if dir_path.exists():
+                # Primero eliminar archivos
+                for path in dir_path.rglob("*"):
+                    if path.is_file():
+                        try:
+                            path.unlink()
+                            deleted_count += 1
+                            show_results(
+                                self.qcpc_input_output_text,
+                                f"Eliminado temporal: {path.relative_to(Path.cwd())}",
+                            )
+                        except Exception as e:
+                            show_results(
+                                self.qcpc_input_output_text,
+                                f"Error eliminando archivo {path.name}: {e}",
+                            )
+
+                # Luego eliminar directorios vacíos (de abajo hacia arriba)
+                for path in sorted(dir_path.rglob("*"), reverse=True):
+                    if path.is_dir():
+                        try:
+                            path.rmdir()  # Solo elimina directorios vacíos
+                            show_results(
+                                self.qcpc_input_output_text,
+                                f"Eliminado directorio: {path.relative_to(Path.cwd())}",
+                            )
+                        except Exception as e:
+                            show_results(
+                                self.qcpc_input_output_text,
+                                f"Error eliminando directorio {path.name}: {e}",
+                            )
+
+        return deleted_count
+
+    def _clean_permanent_images(self):
+        """Limpia imágenes permanentes no utilizadas"""
+        deleted_count = 0
+        used_paths = self._get_used_image_paths()
+
+        for dir_path in [
+            self.config.get_path("boxart_path_images"),
+            self.config.get_path("screenshot_path_images"),
+        ]:
+            if dir_path.exists():
+                for file_path in dir_path.glob("*"):
+                    if file_path.is_file() and str(file_path) not in used_paths:
+                        try:
+                            file_path.unlink()
+                            deleted_count += 1
+                            show_results(
+                                self.qcpc_input_output_text,
+                                f"Eliminada imagen no utilizada: {file_path.relative_to(Path.cwd())}",
+                            )
+                        except Exception as e:
+                            show_results(
+                                self.qcpc_input_output_text,
+                                f"Error eliminando {file_path.name}: {e}",
+                            )
+        return deleted_count
+
+    def _get_used_image_paths(self) -> set:
+        """Obtiene el conjunto de rutas de imágenes usadas en la base de datos"""
+        used_paths = set()
+        try:
+            with self.get_db_connection() as conn:
+                cursor = conn.cursor()
+
+                # Obtener rutas de boxart
+                cursor.execute(
+                    """
+                    SELECT front_boxart_path, back_boxart_path 
+                    FROM juegos 
+                    WHERE front_boxart_path IS NOT NULL 
+                    OR back_boxart_path IS NOT NULL
+                """
+                )
+                for row in cursor.fetchall():
+                    if row[0] and row[0] != "null":
+                        used_paths.add(str(Path(row[0]).absolute()))
+                    if row[1] and row[1] != "null":
+                        used_paths.add(str(Path(row[1]).absolute()))
+
+                # Obtener rutas de screenshots (que están concatenadas con comas)
+                cursor.execute(
+                    """
+                    SELECT screenshot_path 
+                    FROM screenshots 
+                    WHERE screenshot_path IS NOT NULL
+                """
+                )
+                for (paths_str,) in cursor.fetchall():
+                    if paths_str and paths_str != "null":
+                        # Dividir la cadena en rutas individuales
+                        screenshot_paths = paths_str.split(",")
+                        for path in screenshot_paths:
+                            if path.strip():  # Ignorar cadenas vacías
+                                used_paths.add(str(Path(path.strip()).absolute()))
+
+        except sqlite3.Error as e:
+            show_results(
+                self.qcpc_input_output_text, f"Error accediendo a la base de datos: {e}"
             )
+
+        return used_paths
+
+    def _show_cleanup_summary(self, temp_deleted: int, permanent_deleted: int):
+        """Muestra un resumen de la limpieza de imágenes"""
+        summary = []
+
+        if temp_deleted > 0:
+            summary.append(f"{temp_deleted} archivos temporales eliminados")
+
+        if permanent_deleted > 0:
+            summary.append(f"{permanent_deleted} imágenes no utilizadas eliminadas")
+
+        if not summary:
+            message = "No se encontraron archivos para eliminar"
         else:
-            relative_front_boxart_path = "null"
-        if back_boxart_path:
-            new_back_boxart_path = os.path.join(
-                self.path, "files", "images", "boxart", f"{game_id}_back_boxart.jpg"
-            )
-            shutil.move(back_boxart_path, new_back_boxart_path)
-            relative_back_boxart_path = os.path.relpath(new_back_boxart_path, self.path)
-        else:
-            relative_back_boxart_path = "null"
+            message = "Limpieza completada: " + ", ".join(summary)
 
-        # Insertar los datos del juego en la tabla juegos
-        c.execute(
-            """INSERT INTO juegos 
-            (id, game_title, release_date, platform, developer_id, front_boxart_path, back_boxart_path) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (
-                game_id,
-                game_data["game_title"],
-                game_data["release_date"],
-                game_data["platform"],
-                developer_id,
-                relative_front_boxart_path,
-                relative_back_boxart_path,
-            ),
-        )
-
-        # Mover las capturas de pantalla a la carpeta de imágenes y obtener las rutas relativas
-        for screenshot_path in screenshot_paths:
-            new_screenshot_path = os.path.join(
-                self.path,
-                "files",
-                "images",
-                "screenshot",
-                os.path.basename(screenshot_path),
-            )
-            shutil.move(screenshot_path, new_screenshot_path)
-            relative_screenshot_path = os.path.relpath(new_screenshot_path, self.path)
-            c.execute(
-                """INSERT INTO screenshots (game_id, screenshot_path) VALUES (?, ?)""",
-                (game_id, relative_screenshot_path),
-            )
-
-        # Guardar los cambios y cerrar la conexión
-        conn.commit()
-        conn.close()
-
-        # Mostrar mensaje de éxito
-        show_results(
-            self.qcpc_input_output_text,
-            "Selección guardada correctamente en la base de datos.",
-        )
+        show_results(self.qcpc_input_output_text, message)
