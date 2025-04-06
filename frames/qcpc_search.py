@@ -8,7 +8,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 import qtawesome as qta
-from .common import show_results
+from .common import *
 from .qcpc_form import qcpc_form
 from .config.base_config import QCPCConfig
 
@@ -214,23 +214,31 @@ class qcpc_search(QWidget):
             if conn:
                 conn.close()
 
-    def clear_editable_form(self):
-        if hasattr(self, "qcpc_form_editable_frame") and self.qcpc_form_editable_frame:
-            # Obtener el layout principal
-            main_layout = self.layout()
+    def create_editable_form(self):
+        """Crea y muestra el formulario de edición"""
+        try:
+            selected_item = self.qcpc_result_table.currentItem()
+            if not selected_item:
+                show_results(
+                    self.qcpc_input_output_text, "No hay ningún juego seleccionado."
+                )
+                return
 
-            # Remover el widget del layout principal
-            main_layout.removeWidget(self.qcpc_form_editable_frame)
+            game_data = selected_item.data(Qt.UserRole)
+            if not game_data:
+                show_results(
+                    self.qcpc_input_output_text,
+                    "Datos del juego inválidos o incompletos.",
+                )
+                return
 
-            # Eliminar todos los widgets dentro del formulario editable
-            for i in reversed(range(self.qcpc_form_editable_layout.count())):
-                widget = self.qcpc_form_editable_layout.itemAt(i).widget()
-                if widget is not None:
-                    widget.deleteLater()
+            # Remove the on_close parameter since we don't need refresh_list
+            self.edit_form = open_edit_form(parent=self, item_data=game_data)
 
-            # Eliminar el marco del formulario editable
-            self.qcpc_form_editable_frame.deleteLater()
-            self.qcpc_form_editable_frame = None
+        except Exception as e:
+            show_results(
+                self.qcpc_input_output_text, f"Error creando formulario: {str(e)}"
+            )
 
     def update_image(self, game_id: int):
         """Actualiza la imagen mostrada para un juego específico"""
@@ -273,47 +281,6 @@ class qcpc_search(QWidget):
         self.select_button.clicked.connect(self.select_data)
         self.edit_button.clicked.connect(self.edit_data)
         self.save_button.clicked.connect(self.save_data)
-
-    def create_editable_form(self):
-        """Crea y muestra el formulario de edición"""
-        try:
-            # Obtener el elemento seleccionado
-            selected_item = self.qcpc_result_table.currentItem()
-            if selected_item is None:
-                show_results(
-                    self.qcpc_input_output_text, "No hay ningún juego seleccionado."
-                )
-                return
-
-            # Obtener y validar datos del juego
-            game_data = selected_item.data(Qt.UserRole)
-            if not game_data or "game_id" not in game_data:
-                show_results(
-                    self.qcpc_input_output_text,
-                    "Datos del juego inválidos o incompletos.",
-                )
-                return
-
-            # Crear y configurar formulario
-            self.edit_form = qcpc_form()
-            self.edit_form.is_editing = True
-            self.edit_form.record_id = game_data["game_id"]
-
-            # Cargar datos y mostrar
-            if self.edit_form.load_data(game_data):
-                self.edit_form.setWindowModality(Qt.ApplicationModal)
-                self.edit_form.resize(900, 600)  # Alterna
-                self.edit_form.show()
-            else:
-                show_results(
-                    self.qcpc_input_output_text,
-                    "Error cargando datos en el formulario.",
-                )
-
-        except Exception as e:
-            show_results(
-                self.qcpc_input_output_text, f"Error creando formulario: {str(e)}"
-            )
 
     def retranslateUi(self, qcpc_search):
         qcpc_search.setWindowTitle(
@@ -378,33 +345,48 @@ class qcpc_search(QWidget):
 
         return super().eventFilter(source, event)
 
-    def get_game(self):
-        search_text = self.qcpc_input_text.text().strip()
-
-        if not search_text:
-            show_results(
-                self.qcpc_input_output_text, "Por favor ingrese un texto para buscar"
-            )
-            return
-
-        self.clear_editable_form()
-        url_base = "https://api.thegamesdb.net/v1/Games/ByGameName"
-        api_key = self.get_api_key()
-
-        params = {
-            "apikey": api_key,
-            "name": search_text,
-            "filter[platform]": "4914",
-        }
-
+    def clear_editable_form(self):
+        """Limpia el formulario editable si existe"""
         try:
-            request = requests.get(url_base, params=params)
-            request.raise_for_status()
+            if hasattr(self, "edit_form"):
+                self.edit_form.close()
+                delattr(self, "edit_form")
+        except Exception as e:
+            show_results(
+                self.qcpc_input_output_text, f"Error limpiando formulario: {str(e)}"
+            )
 
-            data = request.json()
+    def get_game(self):
+        """Realiza la búsqueda de juegos"""
+        try:
+            search_text = self.qcpc_input_text.text().strip()
+
+            if not search_text:
+                show_results(
+                    self.qcpc_input_output_text,
+                    "Por favor ingrese un texto para buscar",
+                )
+                return
+
+            self.clear_editable_form()
             self.qcpc_result_table.clear()
+            self.qcpc_image_label.clear()
 
-            if "data" in data and "games" in data["data"] and data["data"]["games"]:
+            url_base = "https://api.thegamesdb.net/v1/Games/ByGameName"
+            params = {
+                "apikey": self.get_api_key(),
+                "name": search_text,
+                "filter[platform]": "4914",
+            }
+
+            with requests.get(url_base, params=params, timeout=10) as response:
+                response.raise_for_status()
+                data = response.json()
+
+                if not data.get("data", {}).get("games"):
+                    self.qcpc_result_table.addItem("No se han encontrado resultados")
+                    return
+
                 for game in data["data"]["games"]:
                     try:
                         game_data = {
@@ -418,19 +400,16 @@ class qcpc_search(QWidget):
                             "platform": game.get("platform"),
                             "region_id": game.get("region_id"),
                             "country_id": game.get("country_id"),
-                            "developer_id": (
-                                game.get("developers", [None])[0]
-                                if game.get("developers")
-                                else None
-                            ),
+                            "developer_id": game.get("developers", [None])[0],
                         }
 
-                        # Obtener el nombre del desarrollador de forma segura
+                        # Obtener el nombre del desarrollador
                         developer_name = self.get_developer_name(
                             game_data["developer_id"]
                         )
                         game_data["developers"] = developer_name
 
+                        # Crear item para la lista
                         item = QListWidgetItem(
                             f"{game_data['game_title']} - {game_data['release_date']} - Desarrollador: {developer_name}"
                         )
@@ -442,9 +421,7 @@ class qcpc_search(QWidget):
                             self.qcpc_input_output_text,
                             f"Error procesando juego: {str(e)}",
                         )
-                        continue  # Continuar con el siguiente juego si hay error
-            else:
-                self.qcpc_result_table.addItem("No se han encontrado resultados")
+                        continue
 
         except requests.RequestException as e:
             show_results(

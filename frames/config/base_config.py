@@ -30,12 +30,10 @@ class QCPCConfig:
             for path_name, path in self.paths.items():
                 if not path.exists():
                     path.mkdir(parents=True)
-                    print(f"Creado directorio: {path}")
 
             return True
 
         except Exception as e:
-            print(f"Error en validación: {str(e)}")
             return False
 
     @classmethod

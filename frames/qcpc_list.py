@@ -332,28 +332,9 @@ class qcpc_list(QWidget):
             self.display_message("No item selected")
 
     def open_edit_form(self, item_data):
-        # Procesar screenshot_paths para asegurarse de que sea una cadena separada por comas
-        screenshot_paths = item_data.get("screenshot_paths", "")
-        if isinstance(screenshot_paths, list):
-            screenshot_paths = ",".join(screenshot_paths)  # Convertir lista a cadena
-        elif isinstance(screenshot_paths, str):
-            screenshot_paths = screenshot_paths.strip()  # Limpiar espacios en blanco
-
-        # Actualizar item_data con el formato correcto de screenshot_paths
-        item_data["screenshot_paths"] = screenshot_paths
-
-        # Crear y configurar el formulario de edición
-        self.edit_form = qcpc_form()
-        self.edit_form.is_editing = True  # Indicar que estamos en modo edición
-        self.edit_form.record_id = item_data.get("id")  # Pasar el ID del registro
-        self.edit_form.load_data(item_data)  # Cargar los datos en el formulario
-        self.edit_form.resize(
-            900, 600
-        )  # Alternativa si quieres que sea redimensionable
-        self.edit_form.closed.connect(
-            self.refresh_list
-        )  # Conectar la señal closed a refresh_list
-        self.edit_form.show()
+        self.edit_form = open_edit_form(
+            parent=self, item_data=item_data, on_close=self.refresh_list
+        )
 
     def open_files(self):
         open_file_folder(os.path.join(self.path, "files"))

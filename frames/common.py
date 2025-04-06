@@ -1,54 +1,77 @@
 import os
-import shutil
+from pathlib import Path
 import openpyxl
-import json
+from typing import Dict, Any
+from PyQt5.QtWidgets import QWidget
+from .qcpc_form import qcpc_form
+from .config.base_config import QCPCConfig
 
 
-def load_config():
-    path = os.getcwd()
-    path_to_json = os.path.join(path, "frames", "config", "config.json")
-    with open(path_to_json, "r") as archivo_config:
-        config = json.load(archivo_config)
-    return config
+def open_edit_form(
+    parent: QWidget, item_data: Dict[Any, Any], on_close=None
+) -> qcpc_form:
+    """
+    Abre un formulario de edición con los datos proporcionados.
+
+    Args:
+        parent: Widget padre para el formulario
+        item_data: Diccionario con los datos a editar
+        on_close: Función opcional a ejecutar cuando se cierre el formulario
+
+    Returns:
+        qcpc_form: Instancia del formulario
+    """
+    # Procesar screenshot_paths
+    screenshot_paths = item_data.get("screenshot_paths", "")
+    if isinstance(screenshot_paths, list):
+        screenshot_paths = ",".join(screenshot_paths)
+    elif isinstance(screenshot_paths, str):
+        screenshot_paths = screenshot_paths.strip()
+
+    item_data["screenshot_paths"] = screenshot_paths
+
+    # Crear y configurar el formulario
+    edit_form = qcpc_form()
+    edit_form.is_editing = True
+    edit_form.record_id = item_data.get("id")
+    edit_form.load_data(item_data)
+    edit_form.resize(900, 600)
+
+    # Si se proporciona función on_close, conectarla
+    if on_close and callable(on_close):
+        edit_form.closed.connect(on_close)
+
+    edit_form.show()
+    return edit_form
 
 
-def open_file_folder(path_to_files):
+def open_file_folder(path_to_files: str | Path) -> None:
+    """
+    Abre el explorador de archivos en la ruta especificada
 
-    if not os.path.exists(path_to_files):
-        os.mkdir(path_to_files)
+    Args:
+        path_to_files: Ruta a abrir
+    """
+    path = Path(path_to_files)
+    path.mkdir(parents=True, exist_ok=True)
+
     if os.name == "nt":  # Windows
-        os.system(f"start explorer {path_to_files}")
+        os.startfile(str(path))
     else:  # Linux
-        os.system(f"xdg-open {path_to_files}")
+        os.system(f'xdg-open "{path}"')
 
 
-def delete_files(path_to_files, log):
-    cont = 0
-    fail = 0
-    for filename in os.listdir(path_to_files):
-        file_path = os.path.join(path_to_files, filename)
-        try:
-            if os.path.isfile(file_path) or os.path.islink(file_path):
-                os.unlink(file_path)
-                cont += 1
-            elif os.path.isdir(file_path):
-                shutil.rmtree(file_path)
-                cont += 1
-        except Exception as e:
-            show_results(log, f"No se pudo eliminar {file_path} debido a {e}")
-            fail += 1
-    show_results(
-        log,
-        f"Eliminados {cont} archivos y carpetas correctamente. Fallo en {fail} elementos.",
-    )
+def show_results(output_widget, *args) -> None:
+    """
+    Muestra resultados en un widget de texto
 
-
-def show_results(output_widget, *args):
-    # Reactiva el widget de salida.
+    Args:
+        output_widget: Widget donde mostrar el texto
+        args: Textos a mostrar
+    """
     output_widget.setReadOnly(False)
-    # vacía el contenido que este tenga.
     output_widget.clear()
-    # Inserta el texto generado
+
     try:
         message = " ".join(str(arg) for arg in args)
         output_widget.append(message)
@@ -57,7 +80,7 @@ def show_results(output_widget, *args):
         )
     except Exception as e:
         print(f"Error mostrando resultados: {str(e)}")
-    # Vuelve a deshabilitar el widgt de salida para evitar modificaciones accidentales
+
     output_widget.setReadOnly(True)
 
 

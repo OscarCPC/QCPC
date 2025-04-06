@@ -1,37 +1,33 @@
+from contextlib import contextmanager
+from pathlib import Path
+import sqlite3
 from PyQt5.QtCore import *  # type: ignore
 from PyQt5.QtGui import *  # type: ignore
 from PyQt5.QtWidgets import *  # type: ignore
-import json
-import os
-import shutil
-import sqlite3
-import pandas as pd
 import qtawesome as qta
 from .common import *
+from .config.base_config import QCPCConfig
+import shutil
 
 
 class qcpc_form(QWidget):
-    # Configuración y rutas
-    config = load_config()
-    path = os.getcwd()
-    path_to_db = os.path.join(path, "db", "qcpc.db")
-    path_to_download = os.path.join(path, config["paths"]["path_to_download"])
-    boxart_path = os.path.join(path, config["paths"]["boxart_path"])
-    screenshot_path = os.path.join(path, config["paths"]["screenshot_path"])
-    path_to_image = os.path.join(path, config["paths"]["path_to_image"])
-    boxart_path_images = os.path.join(path, config["paths"]["boxart_path_images"])
-    screenshot_path_images = os.path.join(
-        path, config["paths"]["screenshot_path_images"]
-    )
+
+    def __init__(self, parent=None):
+        super(qcpc_form, self).__init__(parent)
+        self.config = QCPCConfig.from_json()
+        self.project_root = Path(__file__).parent.parent.absolute()
+
+        # Initialize temporary storage for images
+        self.temp_front_boxart = None
+        self.temp_back_boxart = None
+        self.temp_screenshots = []
+
+        self.setupUi()
+        self.setup_animations()
 
     closed = pyqtSignal()
     is_editing = False
     record_id = None
-
-    def __init__(self, parent=None):
-        super(qcpc_form, self).__init__(parent)
-        self.setupUi()
-        self.setup_animations()
 
     def create_label_with_icon(self, icon, text):
         """Crea una etiqueta con icono y texto integrados"""
@@ -361,6 +357,17 @@ class qcpc_form(QWidget):
         self.setup_connections()
         self.populate_developer_combobox()
 
+    @contextmanager
+    def get_db_connection(self):
+        """Context manager para conexiones a BD"""
+        conn = None
+        try:
+            conn = sqlite3.connect(self.config.db_path)
+            yield conn
+        finally:
+            if conn:
+                conn.close()
+
     def process_image(self, pixmap_or_path):
         """Pre-procesa la imagen convirtiéndola a JPG de forma agresiva para eliminar todos los metadatos"""
         try:
@@ -435,50 +442,60 @@ class qcpc_form(QWidget):
         )  # Limpiar el formulario # Cerrar el formulario
 
     def get_developers(self):
+        """Obtiene la lista de desarrolladores de la base de datos"""
         try:
-            conn = sqlite3.connect(self.path_to_db)
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM developers order by name asc;")
-            developers = cursor.fetchall()
-            return developers
+            with self.get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT * FROM developers ORDER BY name ASC")
+                return cursor.fetchall()
         except Exception as e:
-            self.append_message("Error al obtener los desarrolladores")
-            self.append_message(e)
-        finally:
-            conn.close()
+            self.append_message(
+                f"Error al obtener los desarrolladores: {str(e)}", "error"
+            )
+            return []
 
     def load_data(self, item_data):
-        # Cargar los datos en los campos del formulario
-        self.game_title_input.setText(item_data.get("game_title", ""))
-        release_date = item_data.get("release_date", "2000-01-01")
-        if isinstance(release_date, int):  # Si es un entero, convertirlo a cadena
-            release_date = f"{release_date}-01-01"
-        self.release_date_input.setDate(QDate.fromString(release_date, "yyyy-MM-dd"))
+        """Carga los datos en el formulario"""
+        try:
+            # Reset temporary storage
+            self.temp_front_boxart = None
+            self.temp_back_boxart = None
+            self.temp_screenshots = []
 
-        self.platform_input.setText(str(item_data.get("platform", "")))
+            # Load basic data
+            self.game_title_input.setText(item_data.get("game_title", ""))
 
-        # Seleccionar el desarrollador correspondiente en el QComboBox
-        developer_id = item_data.get("developer_id", "")
-        self.append_message(f"Developer ID: {developer_id}")
-        index = self.developer_id_input.findData(developer_id)  # Buscar por el ID
-        if index != -1:
-            self.developer_id_input.setCurrentIndex(index)
-        else:
-            self.developer_id_input.setCurrentIndex(
-                0
-            )  # Seleccionar el primer elemento si no se encuentra
+            # Handle release date
+            release_date = item_data.get("release_date", "2000-01-01")
+            if isinstance(release_date, int):
+                release_date = f"{release_date}-01-01"
+            self.release_date_input.setDate(
+                QDate.fromString(release_date, "yyyy-MM-dd")
+            )
 
-        self.front_boxart_input.setText(item_data.get("front_boxart_path", ""))
-        self.back_boxart_input.setText(item_data.get("back_boxart_path", ""))
+            # Platform and developer
+            self.platform_input.setText(str(item_data.get("platform", "")))
+            developer_id = item_data.get("developer_id")
+            index = self.developer_id_input.findData(developer_id)
+            self.developer_id_input.setCurrentIndex(max(0, index))
 
-        # Cargar screenshot_paths en el campo correspondiente
-        screenshot_paths = item_data.get("screenshot_paths", "")
-        if isinstance(screenshot_paths, list):
-            screenshot_paths = ",".join(screenshot_paths)  # Convertir lista a cadena
-        self.screenshot_input.setText(screenshot_paths)
+            # Handle image paths
+            self.front_boxart_input.setText(item_data.get("front_boxart_path", ""))
+            self.back_boxart_input.setText(item_data.get("back_boxart_path", ""))
 
-        self.url_input.setText(item_data.get("url", ""))
-        self.comments_input.setPlainText(item_data.get("comentarios", ""))
+            # Handle screenshots
+            screenshot_paths = item_data.get("screenshot_paths", "")
+            if isinstance(screenshot_paths, list):
+                screenshot_paths = ";".join(screenshot_paths)
+            self.screenshot_input.setText(screenshot_paths)
+
+            # Additional data
+            self.url_input.setText(item_data.get("url", ""))
+            self.comments_input.setPlainText(item_data.get("comentarios", ""))
+
+        except Exception as e:
+            self.append_message(f"Error cargando datos: {str(e)}", "error")
+            raise
 
     def save_record(self):
         """Guarda o actualiza un registro en la base de datos"""
@@ -501,115 +518,87 @@ class qcpc_form(QWidget):
                 self.append_message("El título del juego es obligatorio", "error")
                 return False
 
-            # Iniciar conexión
-            conn = sqlite3.connect(self.path_to_db)
-            cursor = conn.cursor()
+            with self.get_db_connection() as conn:
+                cursor = conn.cursor()
+                try:
+                    # Iniciar transacción
+                    conn.execute("BEGIN")
 
-            try:
-                # Iniciar transacción
-                conn.execute("BEGIN")
-
-                if self.is_editing:
-                    # Actualizar registro existente
-                    cursor.execute(
-                        """
-                        UPDATE juegos 
-                        SET game_title = ?, release_date = ?, platform = ?, 
-                            developer_id = ?, front_boxart_path = ?, back_boxart_path = ?,
-                            url = ?, comentarios = ?
-                        WHERE id = ?
-                    """,
-                        (
-                            game_title,
-                            release_date,
-                            platform,
-                            developer_id,
-                            front_boxart_path,
-                            back_boxart_path,
-                            url,
-                            comentarios,
-                            self.record_id,
-                        ),
-                    )
-
-                    # Limpiar screenshots existentes
-                    cursor.execute(
-                        "DELETE FROM screenshots WHERE game_id = ?", (self.record_id,)
-                    )
-                else:
-                    # Insertar nuevo registro
-                    cursor.execute(
-                        """
-                        INSERT INTO juegos (
-                            game_title, release_date, platform, developer_id,
-                            front_boxart_path, back_boxart_path, url, comentarios
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                        (
-                            game_title,
-                            release_date,
-                            platform,
-                            developer_id,
-                            front_boxart_path,
-                            back_boxart_path,
-                            url,
-                            comentarios,
-                        ),
-                    )
-
-                    self.record_id = cursor.lastrowid
-
-                # Insertar screenshots
-                if screenshot_paths:
-                    for path in screenshot_paths:
+                    if self.is_editing:
+                        # Actualizar registro existente
                         cursor.execute(
-                            "INSERT INTO screenshots (game_id, screenshot_path) VALUES (?, ?)",
-                            (self.record_id, path),
+                            """
+                            UPDATE juegos 
+                            SET game_title = ?, release_date = ?, platform = ?, 
+                                developer_id = ?, front_boxart_path = ?, back_boxart_path = ?,
+                                url = ?, comentarios = ?
+                            WHERE id = ?
+                        """,
+                            (
+                                game_title,
+                                release_date,
+                                platform,
+                                developer_id,
+                                front_boxart_path,
+                                back_boxart_path,
+                                url,
+                                comentarios,
+                                self.record_id,
+                            ),
                         )
 
-                # Confirmar transacción BD
-                conn.commit()
+                        # Limpiar screenshots existentes
+                        cursor.execute(
+                            "DELETE FROM screenshots WHERE game_id = ?",
+                            (self.record_id,),
+                        )
+                    else:
+                        # Insertar nuevo registro
+                        cursor.execute(
+                            """
+                            INSERT INTO juegos (
+                                game_title, release_date, platform, developer_id,
+                                front_boxart_path, back_boxart_path, url, comentarios
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                            (
+                                game_title,
+                                release_date,
+                                platform,
+                                developer_id,
+                                front_boxart_path,
+                                back_boxart_path,
+                                url,
+                                comentarios,
+                            ),
+                        )
 
-                # Mover archivos
-                if hasattr(self, "temp_front_boxart"):
-                    shutil.move(
-                        self.temp_front_boxart["origin"],
-                        self.temp_front_boxart["destination"],
-                    )
+                        self.record_id = cursor.lastrowid
 
-                if hasattr(self, "temp_back_boxart"):
-                    shutil.move(
-                        self.temp_back_boxart["origin"],
-                        self.temp_back_boxart["destination"],
-                    )
+                    # Insertar screenshots
+                    if screenshot_paths:
+                        for path in screenshot_paths:
+                            cursor.execute(
+                                "INSERT INTO screenshots (game_id, screenshot_path) VALUES (?, ?)",
+                                (self.record_id, path),
+                            )
 
-                if hasattr(self, "temp_screenshots"):
-                    for screenshot in self.temp_screenshots:
-                        shutil.move(screenshot["origin"], screenshot["destination"])
+                    conn.commit()
 
-                self.append_message("Registro guardado correctamente", "success")
+                    # Mover archivos después de commit exitoso
+                    self._move_image_files()
 
-                # Limpiar variables temporales
-                for attr in [
-                    "temp_front_boxart",
-                    "temp_back_boxart",
-                    "temp_screenshots",
-                ]:
-                    if hasattr(self, attr):
-                        delattr(self, attr)
+                    self.append_message("Registro guardado correctamente", "success")
 
-                if self.is_editing:
-                    self.close()
+                    if self.is_editing:
+                        self.close()
 
-                return True
+                    return True
 
-            except Exception as e:
-                conn.rollback()
-                self.append_message(f"Error: {str(e)}", "error")
-                return False
-
-            finally:
-                conn.close()
+                except Exception as e:
+                    conn.rollback()
+                    self.append_message(f"Error en la base de datos: {str(e)}", "error")
+                    return False
 
         except Exception as e:
             self.append_message(f"Error crítico: {str(e)}", "error")
@@ -625,27 +614,29 @@ class qcpc_form(QWidget):
             options=options,
         )
         if file_path:
-            # Procesar la imagen antes de guardarla
             if QImage(file_path).isNull():
                 self.append_message("Archivo de imagen inválido", "error")
                 return
 
-            # Procesar la imagen
             processed_image = self.process_image(file_path)
             if not processed_image:
                 self.append_message("Error al procesar la imagen", "error")
                 return
 
-            # Definir la ruta de destino
-            base_name = os.path.splitext(os.path.basename(file_path))[0]
-            new_file_path = os.path.join(
-                self.path, "files", "images", "boxart", f"{base_name}.jpg"
+            # Usar rutas absolutas desde la configuración
+            base_name = Path(file_path).stem
+            new_file_path = (
+                self.config.get_path("boxart_path_images") / f"{base_name}.jpg"
             )
-            # Guardar las rutas para usarlas después
-            self.temp_front_boxart = {"origin": file_path, "destination": new_file_path}
-            # Mostrar la ruta relativa en el input
-            relative_path = os.path.relpath(new_file_path, self.path)
-            self.front_boxart_input.setText(relative_path)
+
+            self.temp_front_boxart = {
+                "origin": str(Path(file_path)),
+                "destination": str(new_file_path),
+            }
+
+            # Mostrar ruta relativa al proyecto
+            relative_path = new_file_path.relative_to(self.project_root)
+            self.front_boxart_input.setText(str(relative_path))
 
     def select_back_boxart_file(self):
         options = QFileDialog.Options()
@@ -657,24 +648,28 @@ class qcpc_form(QWidget):
             options=options,
         )
         if file_path:
-            # Procesar la imagen antes de guardarla
             if QImage(file_path).isNull():
                 self.append_message("Archivo de imagen inválido", "error")
                 return
 
-            # Procesar la imagen
             processed_image = self.process_image(file_path)
             if not processed_image:
                 self.append_message("Error al procesar la imagen", "error")
                 return
 
-            base_name = os.path.splitext(os.path.basename(file_path))[0]
-            new_file_path = os.path.join(
-                self.path, "files", "images", "boxart", f"{base_name}.jpg"
+            # Usar rutas absolutas desde la configuración
+            base_name = Path(file_path).stem
+            new_file_path = (
+                self.config.get_path("boxart_path_images") / f"{base_name}.jpg"
             )
-            self.temp_back_boxart = {"origin": file_path, "destination": new_file_path}
-            relative_path = os.path.relpath(new_file_path, self.path)
-            self.back_boxart_input.setText(relative_path)
+
+            self.temp_back_boxart = {
+                "origin": str(Path(file_path)),
+                "destination": str(new_file_path),
+            }
+
+            relative_path = new_file_path.relative_to(self.project_root)
+            self.back_boxart_input.setText(str(relative_path))
 
     def select_screenshot_file(self):
         options = QFileDialog.Options()
@@ -688,33 +683,35 @@ class qcpc_form(QWidget):
         if files:
             self.temp_screenshots = []
             relative_paths = []
+
+            screenshot_dir = self.config.get_path("screenshot_path_images")
+            screenshot_dir.mkdir(parents=True, exist_ok=True)
+
             for file_path in files:
-                # Procesar la imagen antes de guardarla
                 if QImage(file_path).isNull():
                     self.append_message(
-                        f"Archivo inválido: {os.path.basename(file_path)}", "error"
+                        f"Archivo inválido: {Path(file_path).name}", "error"
                     )
                     continue
 
-                # Procesar la imagen
                 processed_image = self.process_image(file_path)
                 if not processed_image:
                     self.append_message(
-                        f"Error al procesar: {os.path.basename(file_path)}", "error"
+                        f"Error al procesar: {Path(file_path).name}", "error"
                     )
                     continue
 
-                base_name = os.path.splitext(os.path.basename(file_path))[0]
-                new_file_path = os.path.join(
-                    self.path, "files", "images", "screenshot", f"{base_name}.jpg"
-                )
-                self.temp_screenshots.append(
-                    {"origin": file_path, "destination": new_file_path}
-                )
-                relative_path = os.path.relpath(new_file_path, self.path)
-                relative_paths.append(relative_path)
+                base_name = Path(file_path).stem
+                new_file_path = screenshot_dir / f"{base_name}.jpg"
 
-            if relative_paths:  # Solo actualizar si hay paths válidos
+                self.temp_screenshots.append(
+                    {"origin": str(Path(file_path)), "destination": str(new_file_path)}
+                )
+
+                relative_path = new_file_path.relative_to(self.project_root)
+                relative_paths.append(str(relative_path))
+
+            if relative_paths:
                 self.screenshot_input.setText(";".join(relative_paths))
 
     def closeEvent(self, event):
@@ -798,3 +795,50 @@ class qcpc_form(QWidget):
                 anim = create_animation(button)
                 button.enterEvent = create_hover_handler(anim, True)
                 button.leaveEvent = create_hover_handler(anim, False)
+
+    def _move_image_files(self):
+        """Mueve los archivos de imagen a sus ubicaciones finales"""
+        try:
+            # Mover portada frontal
+            if hasattr(self, "temp_front_boxart") and self.temp_front_boxart:
+                self._move_single_file(
+                    self.temp_front_boxart["origin"],
+                    self.temp_front_boxart["destination"],
+                )
+
+            # Mover portada trasera
+            if hasattr(self, "temp_back_boxart") and self.temp_back_boxart:
+                self._move_single_file(
+                    self.temp_back_boxart["origin"],
+                    self.temp_back_boxart["destination"],
+                )
+
+            # Mover screenshots
+            if hasattr(self, "temp_screenshots"):
+                for screenshot in self.temp_screenshots:
+                    self._move_single_file(
+                        screenshot["origin"], screenshot["destination"]
+                    )
+
+        except Exception as e:
+            self.append_message(f"Error moviendo archivos: {str(e)}", "error")
+            raise
+
+    def _move_single_file(self, origin: str, destination: str):
+        """Mueve un único archivo asegurando que los directorios existan"""
+        try:
+            origin_path = Path(origin)
+            dest_path = Path(destination)
+
+            if not origin_path.exists():
+                raise FileNotFoundError(f"Archivo origen no encontrado: {origin}")
+
+            # Crear directorio destino si no existe
+            dest_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Copiar archivo
+            shutil.copy2(str(origin_path), str(dest_path))
+
+        except Exception as e:
+            self.append_message(f"Error moviendo archivo {origin}: {str(e)}", "error")
+            raise
