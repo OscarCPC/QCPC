@@ -101,7 +101,7 @@ El archivo `config.json` debe contener:
 ## Instalación
 
 ```bash
-git clone https://github.com/yourusername/QCPC.git
+git clone https://github.com/OscarCPC/QCPC.git
 cd QCPC
 pip install -r requirements.txt
 python main.py
