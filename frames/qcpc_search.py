@@ -360,7 +360,6 @@ class qcpc_search(QWidget):
         """Realiza la búsqueda de juegos"""
         try:
             search_text = self.qcpc_input_text.text().strip()
-
             if not search_text:
                 show_results(
                     self.qcpc_input_output_text,
@@ -368,18 +367,23 @@ class qcpc_search(QWidget):
                 )
                 return
 
-            self.clear_editable_form()
-            self.qcpc_result_table.clear()
-            self.qcpc_image_label.clear()
+            with ProgressDialog(
+                self, "Buscando juegos", "Conectando con la API..."
+            ) as progress:
+                self.clear_editable_form()
+                self.qcpc_result_table.clear()
+                self.qcpc_image_label.clear()
 
-            url_base = "https://api.thegamesdb.net/v1/Games/ByGameName"
-            params = {
-                "apikey": self.get_api_key(),
-                "name": search_text,
-                "filter[platform]": "4914",
-            }
-
-            with requests.get(url_base, params=params, timeout=10) as response:
+                progress.setLabelText("Obteniendo resultados...")
+                response = requests.get(
+                    "https://api.thegamesdb.net/v1/Games/ByGameName",
+                    params={
+                        "apikey": self.get_api_key(),
+                        "name": search_text,
+                        "filter[platform]": "4914",
+                    },
+                    timeout=10,
+                )
                 response.raise_for_status()
                 data = response.json()
 
@@ -387,7 +391,20 @@ class qcpc_search(QWidget):
                     self.qcpc_result_table.addItem("No se han encontrado resultados")
                     return
 
-                for game in data["data"]["games"]:
+                games = data["data"]["games"]
+                progress.setMaximum(len(games))
+
+                for i, game in enumerate(games):
+                    progress.setValue(i)
+                    progress.setLabelText(f"Procesando {i+1} de {len(games)}...")
+
+                    if progress.wasCanceled():
+                        show_results(
+                            self.qcpc_input_output_text,
+                            "Búsqueda cancelada por el usuario",
+                        )
+                        return
+
                     try:
                         game_data = {
                             "game_id": game.get("id"),
@@ -409,10 +426,14 @@ class qcpc_search(QWidget):
                         )
                         game_data["developers"] = developer_name
 
-                        # Crear item para la lista
-                        item = QListWidgetItem(
-                            f"{game_data['game_title']} - {game_data['release_date']} - Desarrollador: {developer_name}"
+                        # Crear item para la lista con formato mejorado
+                        display_text = (
+                            f"{game_data['game_title']} "
+                            f"({game_data['release_date']}) - "
+                            f"Desarrollador: {developer_name}"
                         )
+
+                        item = QListWidgetItem(display_text)
                         item.setData(Qt.UserRole, game_data)
                         self.qcpc_result_table.addItem(item)
 
@@ -423,10 +444,13 @@ class qcpc_search(QWidget):
                         )
                         continue
 
+                show_results(
+                    self.qcpc_input_output_text,
+                    f"Búsqueda completada: {len(games)} juegos encontrados",
+                )
+
         except requests.RequestException as e:
-            show_results(
-                self.qcpc_input_output_text, f"Error en la petición REST: {str(e)}"
-            )
+            show_results(self.qcpc_input_output_text, f"Error de conexión: {str(e)}")
         except Exception as e:
             show_results(self.qcpc_input_output_text, f"Error inesperado: {str(e)}")
 
@@ -567,28 +591,39 @@ class qcpc_search(QWidget):
     ):
         """Descarga y guarda una imagen"""
         try:
-            image_path = self._get_absolute_path(Path(image_path))
-            image_path.parent.mkdir(parents=True, exist_ok=True)
-
-            with requests.get(image_url, timeout=10, stream=True) as response:
+            with ProgressDialog(
+                self, "Descargando imagen", f"Descargando {image_type}..."
+            ) as progress:
+                response = requests.get(image_url, stream=True)
                 response.raise_for_status()
+
                 total_size = int(response.headers.get("content-length", 0))
+                if total_size:
+                    progress.setMaximum(total_size)
+
+                image_path = Path(image_path)
+                image_path.parent.mkdir(parents=True, exist_ok=True)
 
                 with open(image_path, "wb") as f:
                     for chunk in response.iter_content(chunk_size=8192):
+                        if progress.wasCanceled():
+                            show_results(
+                                self.qcpc_input_output_text,
+                                f"Descarga de {image_type} cancelada",
+                            )
+                            return False
                         if chunk:
                             f.write(chunk)
+                            if total_size:
+                                progress.setValue(f.tell())
 
-            show_results(
-                self.qcpc_input_output_text,
-                f"Imagen {image_type} descargada ({total_size/1024:.1f}KB)",
-            )
+                return True
 
         except Exception as e:
             show_results(
-                self.qcpc_input_output_text, f"Error descargando imagen: {str(e)}"
+                self.qcpc_input_output_text, f"Error descargando {image_type}: {str(e)}"
             )
-            raise
+            return False
 
     def show_image(
         self, image_path: str, label_width: int = None, label_height: int = None

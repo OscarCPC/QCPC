@@ -1,66 +1,116 @@
-# QCPC - Quantum Computer Program Catalog
+# QCPC - Qt CPC Games Database Manager
 
-A PyQt5-based desktop application for managing computer programs and games.
+Un proyecto de aprendizaje de Python que implementa una interfaz gráfica para gestionar una base de datos de juegos de Amstrad CPC usando PyQt5.
 
-## Features
-- Display program list with details
-- Image slideshow for screenshots and box art
-- Export data to Excel
-- Edit program information
-- File management system
-- Database integration
+## Descripción
 
-## Requirements
+Este proyecto fue desarrollado como ejercicio de aprendizaje con GitHub Copilot, explorando conceptos como:
+
+- Desarrollo de interfaces gráficas con PyQt5
+- Gestión de bases de datos SQLite
+- Manejo de archivos y rutas en Python
+- Integración con APIs externas (TheGamesDB)
+- Estilos y temas personalizados (QSS)
+- Patrones de diseño y arquitectura modular
+
+## Características
+
+- Búsqueda de juegos usando TheGamesDB API
+- Visualización y descarga de carátulas y screenshots
+- Gestión de desarrolladores y metadatos
+- Interfaz estilo Amstrad CPC
+- Manejo de archivos y directorios
+- Sistema de configuración flexible
+- Soporte para múltiples plataformas
+
+## Tecnologías
+
 - Python 3.x
 - PyQt5
-- pandas
-- openpyxl
-- sqlite3
+- SQLite
+- Requests
+- Pillow
+- pathlib
+- dataclasses
 
-## Installation
+## Estructura del Proyecto
 
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/qcpc.git
-
-# Change directory
-cd qcpc
-
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment
-source venv/bin/activate  # Linux/Mac
-# or
-venv\Scripts\activate  # Windows
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-## Project Structure
 ```
 QCPC/
+├── frames/
+│   ├── config/
+│   │   ├── base_config.py
+│   │   └── config.json
+│   ├── common.py
+│   ├── menu.py
+│   ├── qcpc_form.py
+│   └── qcpc_search.py
+├── qss/
+│   └── style.qss
 ├── db/
 │   └── qcpc.db
-├── files/
-│   ├── downloads/
-│   │   ├── boxart/
-│   │   └── screenshot/
-│   └── images/
-│       ├── boxart/
-│       └── screenshot/
-└── frames/
-    ├── common.py
-    ├── qcpc_form.py
-    └── qcpc_list.py
+└── main.py
 ```
 
-## Usage
-Run the application:
+## Configuración
+
+El archivo `config.json` debe contener:
+
+```json
+{
+    "api_key": "your_api_key",
+    "paths": {
+        "db_path": "db/qcpc.db",
+        "boxart_path_images": "files/downloads/boxart",
+        "screenshot_path_images": "files/downloads/screenshot"
+    },
+    "cache_size": 100,
+    "max_concurrent_requests": 5,
+    "debug_mode": false
+}
+```
+
+## Aprendizajes Clave
+
+- Diseño de interfaces con Qt Designer y PyQt5
+- Gestión de estados y eventos en aplicaciones GUI
+- Manejo de configuraciones y rutas absolutas/relativas
+- Integración con APIs externas y procesamiento de respuestas
+- Estilos personalizados con QSS
+- Manejo de errores y feedback al usuario
+- Arquitectura modular y patrones de diseño
+- Control de versiones con Git
+
+## Mejoras Futuras
+
+- Sistema de caché para imágenes
+- Soporte para más plataformas
+- Exportación/importación de datos
+- Tests unitarios y de integración
+- Documentación extendida
+- Internacionalización
+
+## Requisitos
+
+- Python 3.8+
+- PyQt5
+- Requests
+- Pillow
+- SQLite3
+
+## Instalación
+
 ```bash
+git clone https://github.com/yourusername/QCPC.git
+cd QCPC
+pip install -r requirements.txt
 python main.py
 ```
 
-## License
-[Your chosen license]
+## Créditos
+
+Este proyecto fue desarrollado como ejercicio de aprendizaje con la guía de GitHub Copilot, inspirado en el Amstrad CPC y usando la API de TheGamesDB.
+
+## Licencia
+
+MIT License - Siéntete libre de usar y modificar según necesites.

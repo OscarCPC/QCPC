@@ -6,6 +6,28 @@ from PyQt5.QtWidgets import QWidget
 from .qcpc_form import qcpc_form
 from .config.base_config import QCPCConfig
 
+from PyQt5.QtWidgets import QProgressDialog
+from PyQt5.QtCore import Qt
+
+
+class ProgressDialog:
+    """Diálogo de progreso reutilizable"""
+
+    def __init__(self, parent, title="Procesando...", message="Por favor espere..."):
+        self.progress = QProgressDialog(message, "Cancelar", 0, 0, parent)
+        self.progress.setWindowTitle(title)
+        self.progress.setWindowModality(Qt.WindowModal)
+        self.progress.setMinimumDuration(500)
+        self.progress.setAutoClose(True)
+        self.progress.setAutoReset(True)
+
+    def __enter__(self):
+        self.progress.show()
+        return self.progress
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.progress.close()
+
 
 def open_edit_form(
     parent: QWidget, item_data: Dict[Any, Any], on_close=None
