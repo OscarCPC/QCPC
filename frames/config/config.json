@@ -1,5 +1,5 @@
 {
-    "api_key": "8b398662ea67cda0114a51d5b343cc52d085ce00565eec054b8c3c167e818724",
+    "api_key": "YOUR_API_KEY",
     "paths": {
         "db_path": "db/qcpc.db",
         "path_to_download": "files/downloads",
