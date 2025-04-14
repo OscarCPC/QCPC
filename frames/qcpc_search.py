@@ -329,6 +329,7 @@ class qcpc_search(QWidget):
         self.qcpc_result_table.clear()
         self.qcpc_image_label.clear()
         self.clear_editable_form()
+        self.qcpc_input_text.setFocus()  # Restaurar el foco al widget de entrada
         show_results(self.qcpc_input_output_text, "Búsqueda limpiada")
 
     def eventFilter(self, source: QObject, event: QEvent) -> bool:
@@ -343,6 +344,7 @@ class qcpc_search(QWidget):
                     self.clear_search()
                     return True
 
+        # Devuelve False para permitir que otros eventos sean procesados normalmente
         return super().eventFilter(source, event)
 
     def clear_editable_form(self):
@@ -357,7 +359,7 @@ class qcpc_search(QWidget):
             )
 
     def get_game(self):
-        """Realiza la búsqueda de juegos"""
+        """Realiza la búsqueda de juegos utilizando la API de TheGamesDB."""
         try:
             search_text = self.qcpc_input_text.text().strip()
             if not search_text:
@@ -376,11 +378,11 @@ class qcpc_search(QWidget):
 
                 progress.setLabelText("Obteniendo resultados...")
                 response = requests.get(
-                    "https://api.thegamesdb.net/v1/Games/ByGameName",
+                    "https://api.thegamesdb.net/v1.1/Games/ByGameName",
                     params={
                         "apikey": self.get_api_key(),
                         "name": search_text,
-                        "filter[platform]": "4914",
+                        "filter[platform]": "4914",  # Filtrar por plataforma si es necesario
                     },
                     timeout=10,
                 )
@@ -406,6 +408,7 @@ class qcpc_search(QWidget):
                         return
 
                     try:
+                        # Procesar los datos del juego
                         game_data = {
                             "game_id": game.get("id"),
                             "game_title": game.get("game_title", "Sin título"),
@@ -417,7 +420,11 @@ class qcpc_search(QWidget):
                             "platform": game.get("platform"),
                             "region_id": game.get("region_id"),
                             "country_id": game.get("country_id"),
-                            "developer_id": game.get("developers", [None])[0],
+                            "developer_id": (
+                                game.get("developers", [None])[0]
+                                if game.get("developers")
+                                else None
+                            ),
                         }
 
                         # Obtener el nombre del desarrollador
@@ -426,13 +433,14 @@ class qcpc_search(QWidget):
                         )
                         game_data["developers"] = developer_name
 
-                        # Crear item para la lista con formato mejorado
+                        # Crear el texto para mostrar en la lista
                         display_text = (
                             f"{game_data['game_title']} "
                             f"({game_data['release_date']}) - "
                             f"Desarrollador: {developer_name}"
                         )
 
+                        # Crear un elemento de lista y agregarlo al widget
                         item = QListWidgetItem(display_text)
                         item.setData(Qt.UserRole, game_data)
                         self.qcpc_result_table.addItem(item)
@@ -444,10 +452,15 @@ class qcpc_search(QWidget):
                         )
                         continue
 
+                # Mostrar mensaje de éxito
                 show_results(
                     self.qcpc_input_output_text,
                     f"Búsqueda completada: {len(games)} juegos encontrados",
                 )
+
+                # Restaurar el foco al widget de entrada
+                self.qcpc_input_text.setEnabled(True)
+                self.qcpc_input_text.setFocus()
 
         except requests.RequestException as e:
             show_results(self.qcpc_input_output_text, f"Error de conexión: {str(e)}")
