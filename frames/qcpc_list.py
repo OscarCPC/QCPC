@@ -186,6 +186,7 @@ class qcpc_list(QWidget):
         self.qcpc_button_2.clicked.connect(self.create_excel)
         self.qcpc_button_3.clicked.connect(self.delete_currentIndex)
         self.qcpc_button_4.clicked.connect(self.edit_currentIndex)
+        self.qcpc_attribute_table.doubleClicked.connect(self.edit_currentIndex)
         self.qcpc_text_label.anchorClicked.connect(self.open_link)
 
     def handle_selection_change(self, selected, deselected):
@@ -236,10 +237,25 @@ class qcpc_list(QWidget):
                 currentIndex.model().item(currentIndex.row(), 0).data(Qt.UserRole)
             )
             if item_data:
-                # Eliminar el registro de la base de datos
+                # 🔒 Confirmación antes de eliminar
+                confirm = QMessageBox.question(
+                    self,
+                    "Confirmar eliminación",
+                    f"¿Estás seguro de que quieres eliminar el juego con ID {item_data.get('id')}?",
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.No,
+                )
+
+                if confirm != QMessageBox.Yes:
+                    return  # Cancelado por el usuario
+
+                # 🗑️ Eliminar el registro
                 self.delete_game(item_data)
-                # Actualizar la lista después de eliminar
+
+                # 🔄 Refrescar la tabla
                 self.refresh_list()
+
+                # ✅ Mensaje de éxito
                 self.display_message(
                     f"El juego con ID {item_data.get('id')} ha sido eliminado correctamente.",
                     "success",

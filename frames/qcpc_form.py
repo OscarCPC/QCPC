@@ -752,15 +752,11 @@ class qcpc_form(QWidget):
         else:
             color = "black"
 
-        # Obtener los estilos HTML
-        html_styles = get_html_styles()
-        html_footer = get_html_footer()
-
         # Formatear el mensaje con el color correspondiente
         formatted_message = f'<p style="color: {color};">{message}</p>'
 
         # Insertar el mensaje en el QTextBrowser
-        self.info_output.setHtml(html_styles + formatted_message + html_footer)
+        self.info_output.setHtml(formatted_message)
         self.info_output.setDisabled(True)
 
     def setup_animations(self):
@@ -837,7 +833,7 @@ class qcpc_form(QWidget):
             dest_path.parent.mkdir(parents=True, exist_ok=True)
 
             # Copiar archivo
-            shutil.copy2(str(origin_path), str(dest_path))
+            shutil.move(str(origin_path), str(dest_path))
 
         except Exception as e:
             self.append_message(f"Error moviendo archivo {origin}: {str(e)}", "error")

@@ -1,5 +1,5 @@
 {
-    "api_key": "YOUR_API_KEY",
+    "api_key": "your_api_key_here",
     "paths": {
         "db_path": "db/qcpc.db",
         "path_to_download": "files/downloads",
